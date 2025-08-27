@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from loguru import logger
-from playwright.sync_api import TimeoutError as PwTimeoutError, sync_playwright
+from playwright.sync_api import TimeoutError as PwTimeoutError
+from playwright.sync_api import sync_playwright
 
 
 class PlaywrightSession:
-    def __init__(self, headless: bool = True, nav_timeout_ms: int = 30000, viewport: Optional[Dict[str, int]] = None) -> None:
+    def __init__(
+        self,
+        headless: bool = True,
+        nav_timeout_ms: int = 30000,
+        viewport: dict[str, int] | None = None,
+    ) -> None:
         self._headless = headless
         self._timeout = nav_timeout_ms
         self._viewport = viewport or {"width": 1440, "height": 2200}
@@ -61,15 +68,23 @@ class PlaywrightScraper:
     SHOW_ALL_LABELS = [r"show all", r"view all", r"see all"]
     HOLDINGS_HEADER_KEYWORDS = ["holding", "company", "name"]
 
-    def __init__(self, session: Optional[PlaywrightSession] = None, *, headless: bool = True, nav_timeout_ms: int = 30000) -> None:
-        self.session = session or PlaywrightSession(headless=headless, nav_timeout_ms=nav_timeout_ms)
+    def __init__(
+        self,
+        session: PlaywrightSession | None = None,
+        *,
+        headless: bool = True,
+        nav_timeout_ms: int = 30000,
+    ) -> None:
+        self.session = session or PlaywrightSession(
+            headless=headless, nav_timeout_ms=nav_timeout_ms
+        )
         self._own = session is None
 
-    def scrape(self, url: str) -> Dict[str, Any]:  # pragma: no cover - abstract by convention
+    def scrape(self, url: str) -> dict[str, Any]:  # pragma: no cover - abstract by convention
         raise NotImplementedError
 
-    def scrape_many(self, urls: Iterable[str]) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
+    def scrape_many(self, urls: Iterable[str]) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
         opened = False
         if self._own:
             self.session.open()
@@ -161,10 +176,14 @@ class PlaywrightScraper:
 
     def ensure_top_holdings_visible(self, page) -> None:
         try:
-            page.get_by_text(re.compile(r"(top\s+)?holdings", re.I)).first.scroll_into_view_if_needed(timeout=2000)
+            page.get_by_text(
+                re.compile(r"(top\s+)?holdings", re.I)
+            ).first.scroll_into_view_if_needed(timeout=2000)
         except Exception:
             try:
-                page.get_by_role("heading", name=re.compile(r"holdings", re.I)).first.scroll_into_view_if_needed(timeout=2000)
+                page.get_by_role(
+                    "heading", name=re.compile(r"holdings", re.I)
+                ).first.scroll_into_view_if_needed(timeout=2000)
             except Exception:
                 pass
 
@@ -176,7 +195,7 @@ class PlaywrightScraper:
             except Exception:
                 break
 
-    def extract_heading(self, page) -> Optional[str]:
+    def extract_heading(self, page) -> str | None:
         try:
             return page.locator("h1").first.inner_text(timeout=1500).strip()
         except Exception:
@@ -204,7 +223,11 @@ class PlaywrightScraper:
             pass
         # Try by text container
         try:
-            container = page.locator("section, div").filter(has_text=re.compile(r"^top\\s+holdings$", re.I)).first
+            container = (
+                page.locator("section, div")
+                .filter(has_text=re.compile(r"^top\\s+holdings$", re.I))
+                .first
+            )
             h = container.element_handle(timeout=1000)
             if h:
                 t = h.query_selector("table")
@@ -220,12 +243,12 @@ class PlaywrightScraper:
             pass
         return None
 
-    def parse_holdings_from_table(self, page, tbl) -> List[Dict[str, Any]]:
+    def parse_holdings_from_table(self, page, tbl) -> list[dict[str, Any]]:
         if not tbl:
             return []
-        res: List[Dict[str, Any]] = []
+        res: list[dict[str, Any]] = []
         # Get rows within this table robustly for both Locator and ElementHandle
-        rows: List[Any] = []
+        rows: list[Any] = []
         try:
             rows = tbl.locator("tr").all()  # Locator path
         except Exception:
@@ -238,7 +261,7 @@ class PlaywrightScraper:
         start_index = 1 if len(rows) > 0 else 0
         for r in rows[start_index:80]:
             # Get cell locators/handles
-            cells: List[Any] = []
+            cells: list[Any] = []
             try:
                 cells = r.locator("td").all()
             except Exception:
@@ -280,12 +303,14 @@ class PlaywrightScraper:
                 break
         return res
 
-    def parse_holdings_from_any_table(self, page) -> List[Dict[str, Any]]:
+    def parse_holdings_from_any_table(self, page) -> list[dict[str, Any]]:
         # Look for the first few tables near the Top holdings section, then parse
         try:
             containers = [
                 page.get_by_role("heading", name=re.compile(r"^top\\s+holdings$", re.I)).first,
-                page.locator("section, div").filter(has_text=re.compile(r"^top\\s+holdings$", re.I)).first,
+                page.locator("section, div")
+                .filter(has_text=re.compile(r"^top\\s+holdings$", re.I))
+                .first,
             ]
             for cont in containers:
                 try:
@@ -328,8 +353,6 @@ class PlaywrightScraper:
         return []
 
     @staticmethod
-    def _percent(text: str) -> Optional[str]:
+    def _percent(text: str) -> str | None:
         m = re.search(r"\d{1,3}(?:\.\d+)?%", text)
         return m.group(0) if m else None
-
-

@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
-from datetime import datetime
 
 import orjson
 
 from mfa.config.settings import config
-from mfa.logging.logger import setup_logging, logger
+from mfa.logging.logger import logger, setup_logging
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.utils.paths import ensure_parent
 
 
 def _load_urls(urls_file: Path) -> list[str]:
-    with open(urls_file, "r", encoding="utf-8") as fh:
+    with open(urls_file, encoding="utf-8") as fh:
         return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 
@@ -52,5 +51,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

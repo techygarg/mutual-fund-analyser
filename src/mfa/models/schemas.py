@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
-
 
 # NOTE: This file defines two sets of models:
 # 1) Extraction models used for per-fund JSON artifacts
@@ -12,6 +10,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 # --- Extraction models ---
+
 
 class TopHolding(BaseModel):
     rank: int
@@ -32,8 +31,7 @@ class FundInfo(BaseModel):
 
 class FundData(BaseModel):
     fund_info: FundInfo
-    top_holdings: List[TopHolding] = Field(default_factory=list)
-    
+    top_holdings: list[TopHolding] = Field(default_factory=list)
 
 
 class ExtractedFundDocument(BaseModel):
@@ -46,6 +44,7 @@ class ExtractedFundDocument(BaseModel):
 
 # --- Analysis models ---
 
+
 class FundRef(BaseModel):
     name: str
     aum: str = ""
@@ -56,18 +55,18 @@ class CompanyStat(BaseModel):
     fund_count: int
     total_weight: float
     avg_weight: float
-    sample_funds: List[str] = Field(default_factory=list)
+    sample_funds: list[str] = Field(default_factory=list)
 
 
 class CategoryAnalysis(BaseModel):
     schema_version: str = "1.0"
     total_files: int
     total_funds: int
-    funds: List[FundRef] = Field(default_factory=list)
+    funds: list[FundRef] = Field(default_factory=list)
     unique_companies: int
-    top_by_fund_count: List[CompanyStat] = Field(default_factory=list)
-    top_by_total_weight: List[CompanyStat] = Field(default_factory=list)
-    common_in_all_funds: List[CompanyStat] = Field(default_factory=list)
+    top_by_fund_count: list[CompanyStat] = Field(default_factory=list)
+    top_by_total_weight: list[CompanyStat] = Field(default_factory=list)
+    common_in_all_funds: list[CompanyStat] = Field(default_factory=list)
 
 
 # --- Extra extraction models (none) ---
@@ -84,5 +83,3 @@ __all__ = [
     "CompanyStat",
     "CategoryAnalysis",
 ]
-
-

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 from loguru import logger
 
 
@@ -21,5 +22,3 @@ def setup_logging(log_dir: str | Path = "outputs") -> None:
 
 
 __all__ = ["logger", "setup_logging"]
-
-

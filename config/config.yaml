@@ -20,12 +20,6 @@ funds:
     - https://coin.zerodha.com/mf/fund/INF247L01CE3/motilal-oswal-large-cap-fund-direct-growth
   midCap:
     - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF174K01LT0/kotak-midcap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF204K01E54/nippon-india-growth-mid-cap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF247L01445/motilal-oswal-midcap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF200K01TP4/sbi-midcap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF846K01EH3/axis-midcap-fund-direct-growth
-    - https://coin.zerodha.com/mf/fund/INF769K01FA9/mirae-asset-midcap-fund-direct-growth
   smallCap:
     - https://coin.zerodha.com/mf/fund/INF204K01K15/nippon-india-small-cap-fund-direct-growth
     - https://coin.zerodha.com/mf/fund/INF179KA1RW5/hdfc-small-cap-fund-direct-growth

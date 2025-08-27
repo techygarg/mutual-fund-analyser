@@ -9,5 +9,3 @@ def ensure_parent(path: Path) -> None:
 
 def project_root() -> Path:
     return Path.cwd()
-
-

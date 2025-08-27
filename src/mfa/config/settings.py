@@ -3,17 +3,17 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
 
 
 class ConfigProvider:
-    _instance: "ConfigProvider | None" = None
-    _config: Dict[str, Any] | None = None
+    _instance: ConfigProvider | None = None
+    _config: dict[str, Any] | None = None
 
-    def __new__(cls) -> "ConfigProvider":
+    def __new__(cls) -> ConfigProvider:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -23,7 +23,7 @@ class ConfigProvider:
             self._load_config()
 
     @classmethod
-    def get_instance(cls) -> "ConfigProvider":
+    def get_instance(cls) -> ConfigProvider:
         return cls()
 
     def _load_config(self) -> None:
@@ -35,7 +35,7 @@ class ConfigProvider:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-        with open(config_path, "r", encoding="utf-8") as fh:
+        with open(config_path, encoding="utf-8") as fh:
             raw = yaml.safe_load(fh) or {}
 
         self._config = self._resolve_env_vars(raw)
@@ -72,5 +72,3 @@ class ConfigProvider:
 
 
 config = ConfigProvider.get_instance()
-
-
