@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean scrape analyze pipeline orchestrate dashboard status
+.PHONY: help init format lint check clean scrape analyze pipeline dashboard status
 
 # ==============================================================================
 # CONFIGURATION
@@ -33,10 +33,9 @@ help:
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
-	@echo "  make scrape      - 🕷️  Run scraper (URLs via file)"
+	@echo "  make scrape      - 🕷️  Scrape fund data (categories from config)"
 	@echo "  make analyze     - 📊 Analyze collected JSONs"
 	@echo "  make pipeline    - ⚡ Scrape then analyze"
-	@echo "  make orchestrate - 🎭 Run orchestrator (categories from config)"
 	@echo "  make dashboard   - 🌐 Run dashboard server"
 	@echo ""
 	@echo "$(YELLOW)💡 Quick Start: make init && source venv/bin/activate$(NC)"
@@ -85,8 +84,8 @@ clean:
 
 scrape:
 	@$(call check_venv)
-	@echo "$(BLUE)🕷️ Running scraper...$(NC)"
-	@python -m mfa.cli.scrape
+	@echo "$(BLUE)🕷️ Running fund scraper...$(NC)"
+	@python -m mfa.cli.orchestrate $(if $(CATEGORY),--category $(CATEGORY),)
 
 analyze:
 	@$(call check_venv)
@@ -97,11 +96,6 @@ pipeline:
 	@$(call check_venv)
 	@echo "$(BLUE)⚡ Running pipeline...$(NC)"
 	@python -m mfa.cli.pipeline
-
-orchestrate:
-	@$(call check_venv)
-	@echo "$(BLUE)🎭 Running orchestrator...$(NC)"
-	@python -m mfa.cli.orchestrate $(if $(CATEGORY),--category $(CATEGORY),)
 
 dashboard:
 	@$(call check_venv)
