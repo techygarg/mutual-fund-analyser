@@ -586,5 +586,14 @@ make analyze CATEGORY=midCap     # Verify analysis works
 | Duplicate companies | Analysis auto-normalizes names (HDFC vs HDFC Bank) |
 | Missing recent data | Ensure scraping used correct date folder |
 
+## Documentation
+
+### 📚 **Additional Resources**
+
+For more detailed information about the framework:
+
+- **[📐 Architecture Guide](docs/ARCHITECTURE.md)** - Technical architecture overview, design patterns, and module structure
+- **[🚀 Upcoming Features](docs/UPCOMING_FEATURES.md)** - Planned enhancements including Historical Trend Analysis and Date-to-Date Comparison
+
 ## License
 MIT
