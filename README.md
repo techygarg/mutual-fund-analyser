@@ -14,6 +14,52 @@ Three-step pipeline:
 2) Analyze: Read all extracted JSONs for a date/category and produce a per-category analysis JSON
 3) Dashboard: Interactive UI to explore analysis outputs
 
+## Prerequisites
+
+Before you can run the Mutual Fund Analyser, ensure you have the following installed:
+
+### 🐍 **Python Requirements**
+- **Python 3.10 or higher** - Check with `python --version` or `python3 --version`
+- **pip** - Python package manager (usually included with Python)
+
+### 💻 **System Requirements**
+
+**Additional Tools:**
+- **Make** (optional) - For using Makefile commands
+
+### 🔍 **Quick Check**
+
+Verify your system is ready:
+
+```bash
+# Check Python version (should be 3.10+)
+python --version
+# or
+python3 --version
+
+# Check pip is available
+pip --version
+# or  
+pip3 --version
+
+# Check make is available (optional)
+make --version
+```
+
+**Expected output:**
+```
+Python 3.10.0 (or higher)
+pip 23.0.0 (or similar)
+GNU Make 4.3 (or similar)
+```
+
+### 🚨 **Installation Help**
+
+**If Python 3.10+ is not installed:**
+- **macOS**: Install via [Homebrew](https://brew.sh/) → `brew install python@3.10`
+- **Linux**: `sudo apt update && sudo apt install python3.10 python3.10-venv`
+- **Windows**: Download from [python.org](https://www.python.org/downloads/)
+
 ## Getting Started
 
 ### 1. Clone and Setup
@@ -554,13 +600,19 @@ make analyze CATEGORY=midCap     # Verify analysis works
 
 ## Troubleshooting
 
+**💡 First check:** If you're having basic setup issues, review the **[Prerequisites section](#prerequisites)** to ensure all required software is installed correctly.
+
 ### 🔧 **Setup Issues**
 | Problem | Solution |
 |---------|----------|
+| `python: command not found` | Install Python 3.10+ - see [Prerequisites section](#prerequisites) |
+| `make: command not found` | Install Make or use CLI commands directly - see [Prerequisites section](#prerequisites) |
+| `git: command not found` | Install Git - see [Prerequisites section](#prerequisites) |
 | `ModuleNotFoundError: No module named 'mfa'` | Run `pip install -e ".[dev]"` in activated venv |
 | `playwright` command not found | Run `python -m playwright install` |
 | Virtual environment issues | Delete `venv/` folder and run `make init` |
 | Permission errors | Check file permissions, avoid running as root |
+| `Python version too old` | Upgrade to Python 3.10+ - see [Prerequisites section](#prerequisites) |
 
 ### 🕸️ **Scraping Issues**
 | Problem | Solution |
