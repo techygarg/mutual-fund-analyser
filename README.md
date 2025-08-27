@@ -1,11 +1,11 @@
 # Mutual Fund Analyser
 
-A production-grade, modular pipeline to:
-- Extract structured data from mutual fund pages (Zerodha Coin) via Playwright
-- Aggregate the extracted JSONs to compute insights (e.g., most-owned stocks, total weights)
-- Visualize results through a simple web dashboard
+A clean, configurable framework to analyze mutual fund holdings:
+- **Extract** structured data from mutual fund pages (Zerodha Coin) via Playwright
+- **Analyze** the data to find common holdings, overlaps, and investment patterns
+- **Visualize** results through a simple web dashboard
 
-The codebase emphasizes clean architecture, strong boundaries, Pydantic models, robust logging, and an extensible scraping core.
+Built with clean architecture, modular design, and user-friendly configuration.
 
 ## Overview
 
@@ -14,105 +14,146 @@ Three-step pipeline:
 2) Analyze: Read all extracted JSONs for a date/category and produce a per-category analysis JSON
 3) Dashboard: Interactive UI to explore analysis outputs
 
-## Quickstart
+## Getting Started
 
-1) Create and activate a virtual environment and install deps
+### 1. Clone and Setup
+
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/mutual-fund-analyser.git
+cd mutual-fund-analyser
+
+# Setup virtual environment and install dependencies
 make init
-# Then activate for this shell:
+
+# Activate the virtual environment
 source venv/bin/activate
-```
 
-2) Configure
-```bash
-cp .env.example .env        # optional if you use env vars
-# Update config/config.yaml with fund URLs (by category)
-```
-
-3) Install Playwright browsers (first time only)
-```bash
+# Install Playwright browsers (required for scraping)
 python -m playwright install
 ```
 
-4) Run orchestrator (scraping) for a category
+### 2. Configure (Optional)
+
+The framework works out of the box, but you can customize `config/config.yaml`:
+
 ```bash
-# Using Makefile (reads categories from config/config.yaml)
+# Edit configuration to adjust scraping behavior, analysis settings, or add custom funds
+nano config/config.yaml
+```
+
+### 3. Run Analysis
+
+```bash
+# Scrape funds for a specific category
 make orchestrate CATEGORY=midCap
 
-# Or via installed CLI after `pip install -e .`
-mfa-orchestrate --category midCap
-mfa-orchestrate                # all categories
-```
+# Analyze the scraped data  
+make analyze CATEGORY=midCap
 
-5) Run analyzer to generate per-category analysis JSONs
-```bash
-# Analyze for a given date (YYYYMMDD) and optional category
-make analyze DATE=20250826 CATEGORY=midCap
+# Or run both steps together
+make pipeline CATEGORY=midCap
 
-# Or via CLI
-mfa-analyze --date 20250826 --category midCap
-mfa-analyze --date 20250826   # all categories for that date
-mfa-analyze                   # defaults to current date, all categories
-```
-
-6) Launch the dashboard
-```bash
+# Launch interactive dashboard
 make dashboard
-# Open http://localhost:8787
+# Open http://localhost:8787 in your browser
+```
+
+### 4. CLI Usage (Alternative)
+
+You can also use CLI commands directly:
+
+```bash
+# Scraping
+mfa-orchestrate --category midCap    # specific category
+mfa-orchestrate                      # all categories
+
+# Analysis  
+mfa-analyze --category midCap        # specific category
+mfa-analyze --date 20250826          # specific date
+
+# Full pipeline
+mfa-pipeline --category midCap       # scrape + analyze
 ```
 
 ## Project Layout
 
 ```
 mutual-fund-analyser/
-  config/config.yaml             # central config (paths, scraping, funds by category)
+  config/config.yaml             # simplified user configuration
   outputs/
-    extracted_json/<YYYYMMDD>/<category>/*.json   # raw per-fund extractions
-    analysis/<YYYYMMDD>/<category>.json           # aggregated analysis per category
-  dashboard/
-    server.py                    # FastAPI backend (serves API + static UI)
-    static/index.html            # Frontend (Chart.js + vanilla JS)
+    extracted_json/<YYYYMMDD>/<category>/*.json   # scraped fund data
+    analysis/<YYYYMMDD>/<category>.json           # analysis results
   src/mfa/
-    cli/                         # CLI entrypoints
-      orchestrate.py             # Orchestrates scraping for configured categories
-      scrape.py                  # Direct scrape (if needed)
-      analyze.py                 # Aggregation/analysis
-      pipeline.py                # Convenience: extract + analyze
-    config/settings.py           # Pydantic settings and config provider
-    logging/logger.py            # Loguru setup
-    models/schemas.py            # Pydantic models (extraction + analysis)
-    scraping/
-      core/playwright_scraper.py # Reusable Playwright session + helper methods
-      zerodha_coin.py            # Site-specific scraper extending core
-    utils/paths.py
-  pyproject.toml                 # project metadata, dependencies, CLI scripts (mfa-*)
-  Makefile                       # dev workflow (init, orchestrate, analyze, dashboard)
-  README.md                      # this file
+    cli/                         # thin CLI layer (argument parsing only)
+      orchestrate.py             # fund scraping entry point
+      analyze.py                 # analysis entry point
+      pipeline.py                # combined scrape + analyze
+      scrape.py                  # direct scraping utility
+    orchestration/               # business logic for fund data collection
+      orchestrator.py            # coordinates scraping across categories
+    analysis/                    # business logic for holdings analysis
+      analyzer.py                # processes scraped data, finds patterns
+    storage/                     # file I/O operations
+      json_store.py              # JSON save/load with error handling
+    scraping/                    # site-specific scrapers
+      core/playwright_scraper.py # reusable browser automation
+      zerodha_coin.py            # Zerodha Coin specific scraper
+    web/                         # dashboard components
+      server.py                  # FastAPI backend + static file serving
+      static/index.html          # frontend (Chart.js + vanilla JS)
+    config/settings.py           # configuration management
+    logging/logger.py            # structured logging setup
+    models/schemas.py            # data models and validation
+  pyproject.toml                 # project metadata and CLI scripts
+  Makefile                       # development workflow automation
+  README.md                      # this documentation
 ```
 
 ## Configuration
 
-Edit `config/config.yaml`:
+The framework is configured via `config/config.yaml`. Here are the key settings you can customize:
+
 ```yaml
+# Directory paths
 paths:
   output_dir: outputs/extracted_json
   analysis_dir: outputs/analysis
 
+# Scraping behavior
 scraping:
-  engine: playwright
-  playwright:
-    headless: false
+  headless: false              # Show browser window (useful for debugging)
+  timeout_seconds: 30          # Page load timeout
+  delay_between_requests: 1.0  # Delay between scraping each fund (be respectful)
 
+# Analysis preferences
+analysis:
+  max_companies_in_results: 100          # Limit results for readability
+  max_sample_funds_per_company: 5        # Example funds shown per company
+  exclude_from_analysis:                 # Holdings to ignore
+    - "TREPS"        # Treasury Repo
+    - "CASH"         # Cash holdings
+    - "T-BILLS"      # Treasury Bills
+
+# Output formatting
+output:
+  filename_prefix: "coin_"               # Prefix for scraped files
+  include_date_in_folder: true           # Organize by date
+
+# Fund categories and URLs (add your own!)
 funds:
   largeCap:
-    - https://coin.zerodha.com/mf/fund/...
+    - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+    # ... more funds
   midCap:
-    - https://coin.zerodha.com/mf/fund/...
-  smallCap:
-    - https://coin.zerodha.com/mf/fund/...
+    - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+  customCategory:
+    - https://coin.zerodha.com/mf/fund/YOUR_FUND_ID/your-fund-name
 ```
-- Run all categories: `make orchestrate`
-- Run specific category: `make orchestrate CATEGORY=midCap`
+
+**Quick commands:**
+- All categories: `make orchestrate`
+- Specific category: `make orchestrate CATEGORY=midCap`
 
 ## Data formats
 
@@ -156,13 +197,24 @@ funds:
 }
 ```
 
-## Key design points
+## Key Design Points
 
-- Clean architecture: site-agnostic base (`PlaywrightScraper`) + site-specific scraper (`ZerodhaCoinScraper`)
-- Pydantic models for all inputs/outputs (type-safe, versioned schemas)
-- One class per file; reusable helpers live in the core scraper
-- Robust Playwright usage: reusable session, tab selection, lazy session open, graceful waits
-- Logging via Loguru (debug, info, warnings; file rotation is configured)
+**🏗️ Clean Architecture**
+- **Thin CLI layer** - Only handles argument parsing, delegates to business logic
+- **Separated concerns** - Orchestration, analysis, storage in dedicated modules
+- **Configuration-driven** - User-friendly YAML config, sensible defaults
+
+**🛠️ Modular Components**
+- **Orchestrator** - Coordinates fund data collection across categories
+- **Analyzer** - Processes holdings data to find patterns and overlaps
+- **Storage** - Centralized JSON operations with error handling
+- **Scrapers** - Site-agnostic base + site-specific implementations
+
+**🔧 Quality & Reliability**
+- **Type safety** - Pydantic models for all data structures
+- **Error handling** - Custom exceptions and graceful failure recovery
+- **Comprehensive logging** - Structured logging with Loguru
+- **Testable design** - Easy to unit test individual components
 
 ## Common commands
 
