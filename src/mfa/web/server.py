@@ -103,6 +103,6 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("server:app", host="0.0.0.0", port=8787, reload=True)
+    uvicorn.run("mfa.web.server:app", host="0.0.0.0", port=8787, reload=True)
 
 

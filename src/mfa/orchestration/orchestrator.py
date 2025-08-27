@@ -167,17 +167,28 @@ class Orchestrator:
         total_urls = sum(len(urls) for urls in selected_categories.values())
         processed_count = 0
         category_results = []
-
-        for category_idx, (cat_name, urls) in enumerate(selected_categories.items(), 1):
-            cat_result = self._process_category(
-                category=cat_name,
-                urls=urls,
-                category_index=category_idx,
-                total_categories=len(selected_categories),
-                output_root=output_root
-            )
-            category_results.append(cat_result)
-            processed_count += cat_result.successful
+        
+        # Create ONE scraper for entire orchestration run
+        scraper = self._create_scraper()
+        logger.debug("🎡 Created shared scraper session for all categories")
+        
+        try:
+            for category_idx, (cat_name, urls) in enumerate(selected_categories.items(), 1):
+                cat_result = self._process_category(
+                    category=cat_name,
+                    urls=urls,
+                    category_index=category_idx,
+                    total_categories=len(selected_categories),
+                    output_root=output_root,
+                    scraper=scraper  # Pass existing scraper
+                )
+                category_results.append(cat_result)
+                processed_count += cat_result.successful
+        finally:
+            # Close scraper session after ALL categories are done
+            if hasattr(scraper, 'session') and scraper.session:
+                scraper.session.close()
+                logger.debug("🔒 Closed scraper session after processing all categories")
 
         result = OrchestrationResult(
             total_funds=total_urls,
@@ -190,20 +201,14 @@ class Orchestrator:
         return result
 
     def _process_category(self, category: str, urls: list[str], category_index: int,
-                         total_categories: int, output_root: Path) -> CategoryResult:
+                         total_categories: int, output_root: Path, scraper: ZerodhaCoinScraper) -> CategoryResult:
         """Process all URLs in a single category."""
         self._log_category_start(category, urls, category_index, total_categories, output_root)
 
         category_start_time = datetime.now(UTC)
         stats = {"successful": 0, "failed": 0}
 
-        self._create_scraper()
-
-        try:
-            self._process_category_urls(category, urls, output_root, stats)
-        finally:
-            # Scraper cleanup is handled by context manager in scraper itself
-            pass
+        self._process_category_urls(category, urls, output_root, stats, scraper)
 
         duration = (datetime.now(UTC) - category_start_time).total_seconds()
         result = CategoryResult(
@@ -237,10 +242,9 @@ class Orchestrator:
         return ZerodhaCoinScraper(session=session)
 
     def _process_category_urls(self, category: str, urls: list[str],
-                              output_root: Path, stats: dict[str, int]) -> None:
+                              output_root: Path, stats: dict[str, int], scraper: ZerodhaCoinScraper) -> None:
         """Process all URLs in a category."""
         target_dir = self._get_category_directory(output_root, category)
-        scraper = self._create_scraper()
 
         settings = self._get_scraping_settings()
         for url_index, url in enumerate(urls, 1):

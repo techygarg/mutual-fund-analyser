@@ -94,7 +94,7 @@
         <div class="card">
           <h2>Top by Fund Count</h2>
           <table id="byCount"><thead><tr>
-            <th data-key="company">Company</th>
+            <th data-key="name">Company</th>
             <th data-key="fund_count">Funds</th>
             <th data-key="total_weight">Total %</th>
             <th data-key="avg_weight">Avg %</th>
@@ -103,7 +103,7 @@
         <div class="card">
           <h2>Top by Total Weight</h2>
           <table id="byWeight"><thead><tr>
-            <th data-key="company">Company</th>
+            <th data-key="name">Company</th>
             <th data-key="fund_count">Funds</th>
             <th data-key="total_weight">Total %</th>
             <th data-key="avg_weight">Avg %</th>
@@ -188,9 +188,9 @@
         const bc = [...dataByCount].sort(cmp(kC,dC)).slice(0,25);
         const bw = [...dataByWeight].sort(cmp(kW,dW)).slice(0,25);
         const byC = document.querySelector('#byCount tbody'); byC.innerHTML='';
-        bc.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.company}</td><td>${r.fund_count}</td><td>${fmt(r.total_weight)}</td><td>${fmt(r.avg_weight)}</td>`; byC.appendChild(tr); });
+        bc.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.name}</td><td>${r.fund_count}</td><td>${fmt(r.total_weight)}</td><td>${fmt(r.avg_weight)}</td>`; byC.appendChild(tr); });
         const byW = document.querySelector('#byWeight tbody'); byW.innerHTML='';
-        bw.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.company}</td><td>${r.fund_count}</td><td>${fmt(r.total_weight)}</td><td>${fmt(r.avg_weight)}</td>`; byW.appendChild(tr); });
+        bw.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.name}</td><td>${r.fund_count}</td><td>${fmt(r.total_weight)}</td><td>${fmt(r.avg_weight)}</td>`; byW.appendChild(tr); });
         updateSortIndicators();
       }
 
@@ -212,8 +212,8 @@
       function renderCharts(){
         const topC = [...dataByCount].sort((a,b)=>b.fund_count-a.fund_count).slice(0,5);
         const topW = [...dataByWeight].sort((a,b)=>b.total_weight-a.total_weight).slice(0,5);
-        const labelsC = topC.map(r=>r.company); const dataC = topC.map(r=>r.fund_count);
-        const labelsW = topW.map(r=>r.company); const dataW = topW.map(r=>r.total_weight);
+        const labelsC = topC.map(r=>r.name); const dataC = topC.map(r=>r.fund_count);
+        const labelsW = topW.map(r=>r.name); const dataW = topW.map(r=>r.total_weight);
         const ctxC = document.getElementById('chartCount'); const ctxW = document.getElementById('chartWeight');
         if(chartCount) chartCount.destroy(); if(chartWeight) chartWeight.destroy();
         chartCount = new Chart(ctxC, { type:'bar', data:{ labels:labelsC, datasets:[{ label:'Funds', data:dataC, backgroundColor: PALETTE }] }, options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ grid:{color:'#223154'}}, y:{ grid:{display:false}} } } });
@@ -231,7 +231,7 @@
         }
         empty.style.display='none';
         const top = [...commonAll].sort((a,b)=>b.total_weight-a.total_weight).slice(0,5);
-        const labels = top.map(r=>r.company);
+        const labels = top.map(r=>r.name);
         const data = top.map(r=>r.total_weight);
         const ctx = document.getElementById('chartCommon');
         if(!window.Chart || !ctx){ wrap.style.display='none'; return; }
