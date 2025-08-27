@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,10 +12,7 @@ from mfa.scraping.core.playwright_scraper import PlaywrightSession
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.storage.json_store import JsonStore
 
-# Constants
-DEFAULT_OUTPUT_DIR = "outputs/extracted_json"
-SCRAPER_TIMEOUT_MS = 3000
-FILENAME_PREFIX = "coin_"
+# Technical constants (not user-configurable)
 DATE_FORMAT = "%Y%m%d"
 
 
@@ -92,6 +90,21 @@ class Orchestrator:
 
         return self._execute_orchestration(selected_categories, output_root)
 
+    def _get_scraping_settings(self) -> dict:
+        """Get simple scraping settings from config."""
+        return {
+            'headless': self._config.get("scraping.headless", True),
+            'timeout_seconds': self._config.get("scraping.timeout_seconds", 30),
+            'delay_seconds': self._config.get("scraping.delay_between_requests", 1.0),
+        }
+
+    def _get_output_settings(self) -> dict:
+        """Get output settings from config."""
+        return {
+            'filename_prefix': self._config.get("output.filename_prefix", "coin_"),
+            'include_date_in_folder': self._config.get("output.include_date_in_folder", True),
+        }
+
     def _log_welcome_message(self) -> None:
         """Log the welcome banner."""
         logger.info("\n" + "="*60)
@@ -100,7 +113,7 @@ class Orchestrator:
 
     def _get_output_directory(self) -> Path:
         """Get the configured output directory."""
-        output_dir = self._config.get("paths.output_dir") or DEFAULT_OUTPUT_DIR
+        output_dir = self._config.get("paths.output_dir")
         return Path(str(output_dir))
 
     def _load_funds_configuration(self) -> dict[str, list[str]]:
@@ -213,8 +226,14 @@ class Orchestrator:
         logger.info("💾 Saving to: {}", target_dir)
 
     def _create_scraper(self) -> ZerodhaCoinScraper:
-        """Create and configure a scraper instance."""
-        session = PlaywrightSession(headless=True, nav_timeout_ms=SCRAPER_TIMEOUT_MS)
+        """Create scraper with user configuration."""
+        settings = self._get_scraping_settings()
+        timeout_ms = int(settings['timeout_seconds'] * 1000)  # Convert to ms
+
+        session = PlaywrightSession(
+            headless=settings['headless'],
+            nav_timeout_ms=timeout_ms
+        )
         return ZerodhaCoinScraper(session=session)
 
     def _process_category_urls(self, category: str, urls: list[str],
@@ -223,10 +242,19 @@ class Orchestrator:
         target_dir = self._get_category_directory(output_root, category)
         scraper = self._create_scraper()
 
+        settings = self._get_scraping_settings()
         for url_index, url in enumerate(urls, 1):
             try:
                 self._process_single_url(url, url_index, len(urls), target_dir, scraper)
                 stats["successful"] += 1
+
+                # Add delay between requests (except for the last one)
+                if url_index < len(urls):
+                    delay_seconds = settings['delay_seconds']
+                    if delay_seconds > 0:
+                        logger.debug("  ⏳ Waiting {:.1f}s before next request...", delay_seconds)
+                        time.sleep(delay_seconds)
+
             except Exception as exc:
                 self._handle_url_processing_error(url, exc)
                 stats["failed"] += 1
@@ -257,8 +285,9 @@ class Orchestrator:
         logger.info("  🌐 URL: {}", url)
 
     def _save_scraping_result(self, url: str, result: dict[str, Any], target_dir: Path) -> Path:
-        """Save scraping result to file."""
-        filename = f"{FILENAME_PREFIX}{self._create_safe_filename_from_url(url)}.json"
+        """Save scraping result using configured filename pattern."""
+        output_settings = self._get_output_settings()
+        filename = f"{output_settings['filename_prefix']}{self._create_safe_filename_from_url(url)}.json"
         output_file = target_dir / filename
         JsonStore.save(result, output_file)
         return output_file

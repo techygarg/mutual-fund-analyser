@@ -1,14 +1,39 @@
+# =============================================================================
+# MFA Configuration - Simple and Focused
+# =============================================================================
+
+# Directory paths (customize where outputs go)
 paths:
   output_dir: outputs/extracted_json
   analysis_dir: outputs/analysis
 
+# Scraping settings (adjust for your system/network)
 scraping:
-  engine: playwright
-  concurrent_requests: 10
-  playwright:
-    headless: false
+  headless: false              # Set to true to hide browser window
+  timeout_seconds: 30          # How long to wait for pages to load
+  delay_between_requests: 1.0  # Seconds to wait between scraping each fund
 
+# Analysis preferences (customize your results)
+analysis:
+  # How many results to show
+  max_companies_in_results: 100
+  max_sample_funds_per_company: 10
+  
+  # What to exclude from analysis (these aren't real stock holdings)
+  exclude_from_analysis:
+    - "TREPS"        # Treasury Repo
+    - "CASH"         # Cash holdings  
+    - "T-BILLS"      # Treasury Bills
+    - "REVERSE REPO" # Reverse Repo
+    - "REPO"         # Repo
+    - "CBLO"         # Collateralized Borrowing
 
+# Output formatting
+output:
+  filename_prefix: "coin_"     # Prefix for scraped data files
+  include_date_in_folder: true # Create date-based folders (YYYYMMDD)
+
+# Fund URLs to analyze (add/remove funds as needed)
 funds:
   largeCap:
     - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -29,3 +54,7 @@ funds:
     - https://coin.zerodha.com/mf/fund/INF760K01JC6/canara-robeco-small-cap-fund-direct-growth
     - https://coin.zerodha.com/mf/fund/INF109K015M0/icici-prudential-smallcap-fund-direct-growth
     - https://coin.zerodha.com/mf/fund/INF247L01BY3/motilal-oswal-small-cap-fund-direct-growth
+
+  # Add custom categories as needed
+  # hybridFunds:
+  #   - https://coin.zerodha.com/mf/fund/FUND_ID/fund-name

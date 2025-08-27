@@ -11,12 +11,8 @@ from mfa.config.settings import config
 from mfa.logging.logger import logger
 from mfa.storage.json_store import JsonStore
 
-# Constants
-TOP_COMPANIES_LIMIT = 100
-MAX_SAMPLE_FUNDS = 5
-EXCLUDED_HOLDINGS = {"TREPS", "CASH", "T-BILLS", "REVERSE REPO", "REPO"}
-DATE_PATTERN = r"\d{8}"
-
+# Technical constants (not user-configurable)
+DATE_PATTERN = r"\d{8}"        # Technical regex
 
 @dataclass
 class AnalysisResult:
@@ -121,6 +117,14 @@ class FundAnalyzer:
         self._log_analysis_overview(categories)
 
         return self._execute_analysis(categories, scan_root, analysis_dir)
+
+    def _get_analysis_settings(self) -> dict:
+        """Get simple analysis settings from config."""
+        return {
+            'max_companies': self._config.get("analysis.max_companies_in_results", 100),
+            'max_samples': self._config.get("analysis.max_sample_funds_per_company", 5),
+            'excluded_holdings': set(self._config.get("analysis.exclude_from_analysis", [])),
+        }
 
     def _log_welcome_message(self) -> None:
         """Log the welcome banner."""
@@ -341,7 +345,9 @@ class FundAnalyzer:
         """Check if company name is valid for analysis."""
         if not company_name:
             return False
-        return company_name.upper() not in EXCLUDED_HOLDINGS
+
+        analysis_settings = self._get_analysis_settings()
+        return company_name.upper() not in analysis_settings['excluded_holdings']
 
     def _update_company_data(self, company_name: str, fund_name: str, weight: float,
                             holdings_data: HoldingsData) -> None:
@@ -350,7 +356,9 @@ class FundAnalyzer:
         holdings_data.company_total_weights[company_name] += weight
 
         # Add to examples if not already maxed out
-        if len(holdings_data.company_examples[company_name]) < MAX_SAMPLE_FUNDS:
+        analysis_settings = self._get_analysis_settings()
+        max_samples = analysis_settings['max_samples']
+        if len(holdings_data.company_examples[company_name]) < max_samples:
             if fund_name not in holdings_data.company_examples[company_name]:
                 holdings_data.company_examples[company_name].append(fund_name)
 
@@ -376,6 +384,9 @@ class FundAnalyzer:
 
     def _build_analysis_output(self, holdings_data: HoldingsData) -> dict[str, Any]:
         """Build the final analysis output dictionary."""
+        analysis_settings = self._get_analysis_settings()
+        max_companies = analysis_settings['max_companies']
+
         companies_by_count = self._build_companies_by_fund_count(holdings_data)
         companies_by_weight = self._build_companies_by_total_weight(holdings_data)
         common_companies = self._find_companies_in_all_funds(holdings_data)
@@ -385,13 +396,15 @@ class FundAnalyzer:
             "total_funds": holdings_data.total_funds,
             "funds": self._build_funds_list(holdings_data.funds_info),
             "unique_companies": holdings_data.unique_companies_count,
-            "top_by_fund_count": [comp.__dict__ for comp in companies_by_count[:TOP_COMPANIES_LIMIT]],
-            "top_by_total_weight": [comp.__dict__ for comp in companies_by_weight[:TOP_COMPANIES_LIMIT]],
+            "top_by_fund_count": [comp.__dict__ for comp in companies_by_count[:max_companies]],
+            "top_by_total_weight": [comp.__dict__ for comp in companies_by_weight[:max_companies]],
             "common_in_all_funds": [comp.__dict__ for comp in common_companies],
         }
 
     def _build_companies_by_fund_count(self, holdings_data: HoldingsData) -> list[CompanyAnalysis]:
         """Build list of companies sorted by fund count."""
+        analysis_settings = self._get_analysis_settings()
+        max_samples = analysis_settings['max_samples']
         companies = []
 
         for company_name, funds_set in holdings_data.company_to_funds.items():
@@ -403,7 +416,7 @@ class FundAnalyzer:
                 fund_count=fund_count,
                 total_weight=round(total_weight, 3),
                 avg_weight=round(total_weight / max(fund_count, 1), 3),
-                sample_funds=sorted(funds_set)[:MAX_SAMPLE_FUNDS]
+                sample_funds=sorted(funds_set)[:max_samples]
             )
             companies.append(company_analysis)
 
@@ -411,6 +424,8 @@ class FundAnalyzer:
 
     def _build_companies_by_total_weight(self, holdings_data: HoldingsData) -> list[CompanyAnalysis]:
         """Build list of companies sorted by total weight."""
+        analysis_settings = self._get_analysis_settings()
+        max_samples = analysis_settings['max_samples']
         companies = []
 
         for company_name, total_weight in holdings_data.company_total_weights.items():
@@ -421,7 +436,7 @@ class FundAnalyzer:
                 fund_count=fund_count,
                 total_weight=round(total_weight, 3),
                 avg_weight=round(total_weight / max(fund_count, 1), 3),
-                sample_funds=sorted(holdings_data.company_examples[company_name])[:MAX_SAMPLE_FUNDS]
+                sample_funds=sorted(holdings_data.company_examples[company_name])[:max_samples]
             )
             companies.append(company_analysis)
 
