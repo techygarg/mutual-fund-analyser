@@ -1,0 +1,66 @@
+# =============================================================================
+# MFA Configuration - Simple and Focused
+# =============================================================================
+
+# Directory paths (customize where outputs go)
+paths:
+  output_dir: outputs/extracted_json
+  analysis_dir: outputs/analysis
+
+# Scraping settings (adjust for your system/network)
+scraping:
+  headless: false              # Set to true to hide browser window
+  timeout_seconds: 30          # How long to wait for pages to load
+  delay_between_requests: 1.0  # Seconds to wait between scraping each fund
+
+# Analysis preferences (customize your results)
+analysis:
+  # How many results to show
+  max_companies_in_results: 100
+  max_sample_funds_per_company: 10
+  
+  # What to exclude from analysis (these aren't real stock holdings)
+  exclude_from_analysis:
+    - "TREPS"        # Treasury Repo
+    - "CASH"         # Cash holdings  
+    - "T-BILLS"      # Treasury Bills
+    - "REVERSE REPO" # Reverse Repo
+    - "REPO"         # Repo
+    - "CBLO"         # Collateralized Borrowing
+
+# Output formatting
+output:
+  filename_prefix: "coin_"     # Prefix for scraped data files
+  include_date_in_folder: true # Create date-based folders (YYYYMMDD)
+
+# Fund URLs to analyze (add/remove funds as needed)
+funds:
+  largeCap:
+    - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF109K016L0/icici-prudential-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF200K01QX4/sbi-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF251K01HN7/baroda-bnp-paribas-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF760K01FR2/canara-robeco-large-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF247L01CE3/motilal-oswal-large-cap-fund-direct-growth
+  midCap:
+    - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF174K01LT0/kotak-midcap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF204K01E54/nippon-india-growth-mid-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF247L01445/motilal-oswal-midcap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF200K01TP4/sbi-midcap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF846K01EH3/axis-midcap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF769K01FA9/mirae-asset-midcap-fund-direct-growth
+  smallCap:
+    - https://coin.zerodha.com/mf/fund/INF204K01K15/nippon-india-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF179KA1RW5/hdfc-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF200K01T51/sbi-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF846K01K35/axis-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF966L01689/quant-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF760K01JC6/canara-robeco-small-cap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF109K015M0/icici-prudential-smallcap-fund-direct-growth
+    - https://coin.zerodha.com/mf/fund/INF247L01BY3/motilal-oswal-small-cap-fund-direct-growth
+
+  # Add custom categories as needed
+  # hybridFunds:
+  #   - https://coin.zerodha.com/mf/fund/FUND_ID/fund-name
