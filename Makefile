@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status
+.PHONY: help init format lint check clean test test-unit test-integration test-ci test-unit-ci test-integration-ci scrape analyze pipeline dashboard status
 
 # ==============================================================================
 # CONFIGURATION
@@ -34,6 +34,12 @@ help:
 	@echo "  make test-unit   - ⚡ Run unit tests only (fast)"
 	@echo "  make test-integration - 🏭 Run integration tests only"
 	@echo "  make status      - 📋 Show project status and health"
+	@echo ""
+	@echo "$(GREEN)🚀 CI Commands (no venv check, with coverage):$(NC)"
+	@echo "  make check-ci    - ✅ Run format + lint + type checks (CI)"
+	@echo "  make test-ci     - 🧪 Run all tests with coverage (CI)"
+	@echo "  make test-unit-ci - ⚡ Run unit tests with coverage (CI)"
+	@echo "  make test-integration-ci - 🏭 Run integration tests (CI)"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
 	@echo "  make scrape      - 🕷️  Scrape fund data (categories from config)"
@@ -98,6 +104,57 @@ test-integration:
 	@echo "$(BLUE)🏭 Running integration tests...$(NC)"
 	@python -m pytest tests/integration/ -v
 	@echo "$(GREEN)✅ Integration tests complete$(NC)"
+
+# ==============================================================================
+# CI-SPECIFIC COMMANDS (No venv check, with coverage and CI flags)
+# ==============================================================================
+
+test-ci:
+	@echo "$(BLUE)🧪 Running all tests (CI mode)...$(NC)"
+	@python -m pytest tests/ \
+		--cov=src/mfa \
+		--cov-report=xml \
+		--cov-report=html \
+		--cov-report=term-missing \
+		--junitxml=test-results.xml \
+		-v
+	@echo "$(GREEN)✅ All tests complete$(NC)"
+
+test-unit-ci:
+	@echo "$(BLUE)⚡ Running unit tests (CI mode)...$(NC)"
+	@python -m pytest tests/unit/ \
+		--cov=src/mfa \
+		--cov-report=xml \
+		--cov-report=term-missing \
+		--junitxml=unit-test-results.xml \
+		-v
+	@echo "$(GREEN)✅ Unit tests complete$(NC)"
+
+test-integration-ci:
+	@echo "$(BLUE)🏭 Running integration tests (CI mode)...$(NC)"
+	@python -m pytest tests/integration/ \
+		--junitxml=integration-test-results.xml \
+		--tb=short \
+		-v
+	@echo "$(GREEN)✅ Integration tests complete$(NC)"
+
+format-check:
+	@echo "$(BLUE)✨ Checking code formatting...$(NC)"
+	@ruff format --check src tests
+	@echo "$(GREEN)✅ Code formatting check complete$(NC)"
+
+lint-check:
+	@echo "$(BLUE)🔍 Running linting checks...$(NC)"
+	@ruff check src tests
+	@echo "$(GREEN)✅ Linting check complete$(NC)"
+
+type-check:
+	@echo "$(BLUE)🔎 Running type checks...$(NC)"
+	@mypy src
+	@echo "$(GREEN)✅ Type checking complete$(NC)"
+
+check-ci: format-check lint-check type-check
+	@echo "$(GREEN)✅ All CI checks passed!$(NC)"
 
 # ==============================================================================
 # APPLICATION COMMANDS

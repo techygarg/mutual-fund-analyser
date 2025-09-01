@@ -45,14 +45,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
         
-    - name: "✨ Check code formatting with ruff"
-      run: ruff format --check src tests
-      
-    - name: "🔍 Lint code with ruff"
-      run: ruff check src tests
-      
-    - name: "🔎 Type check with mypy"
-      run: mypy src
+    - name: "🔍 Run all code quality checks"
+      run: make check-ci
 
   # Job 2: Unit Tests (Fast)
   unit-tests:
@@ -83,13 +77,7 @@ jobs:
         pip install -e ".[dev]"
         
     - name: "🧪 Run unit tests with coverage"
-      run: |
-        python -m pytest tests/unit/ \
-          --cov=src/mfa \
-          --cov-report=xml \
-          --cov-report=term-missing \
-          --junitxml=unit-test-results.xml \
-          -v
+      run: make test-unit-ci
           
     - name: "📊 Upload coverage reports to Codecov"
       uses: codecov/codecov-action@v3
@@ -152,11 +140,7 @@ jobs:
       env:
         # Ensure headless mode for CI
         PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
-      run: |
-        python -m pytest tests/integration/ \
-          --junitxml=integration-test-results.xml \
-          --tb=short \
-          -v
+      run: make test-integration-ci
           
     - name: "📋 Upload integration test results"
       uses: actions/upload-artifact@v3
@@ -217,14 +201,7 @@ jobs:
     - name: "🧪 Run complete test suite with coverage"
       env:
         PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
-      run: |
-        python -m pytest tests/ \
-          --cov=src/mfa \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term-missing \
-          --junitxml=full-test-results.xml \
-          -v
+      run: make test-ci
           
     - name: "📊 Upload full coverage report"
       uses: codecov/codecov-action@v3
@@ -240,7 +217,7 @@ jobs:
       with:
         name: full-test-results
         path: |
-          full-test-results.xml
+          test-results.xml
           htmlcov/
 
   # Job 5: Test Summary & Status Check

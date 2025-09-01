@@ -22,8 +22,8 @@ def unit_test_config() -> Generator[dict[str, Any], None, None]:
 @pytest.fixture
 def mock_config_provider(unit_test_config: dict[str, Any]) -> Generator[ConfigProvider, None, None]:
     """Mock ConfigProvider with unit test configuration."""
-    with patch.object(ConfigProvider, '_config', unit_test_config):
-        with patch.object(ConfigProvider, '_instance', None):
+    with patch.object(ConfigProvider, "_config", unit_test_config):
+        with patch.object(ConfigProvider, "_instance", None):
             yield ConfigProvider.get_instance()
 
 
@@ -51,36 +51,28 @@ def sample_fund_data() -> dict[str, Any]:
                 "aum": "₹15,000 Cr",
                 "fund_manager": "John Doe",
                 "launch_date": "2010-01-01",
-                "risk_level": "Moderate"
+                "risk_level": "Moderate",
             },
             "top_holdings": [
                 {
                     "rank": 1,
                     "company_name": "Reliance Industries Ltd",
-                    "allocation_percentage": "8.50%"
+                    "allocation_percentage": "8.50%",
                 },
                 {
                     "rank": 2,
                     "company_name": "Tata Consultancy Services Ltd",
-                    "allocation_percentage": "6.25%"
+                    "allocation_percentage": "6.25%",
                 },
-                {
-                    "rank": 3,
-                    "company_name": "HDFC Bank Ltd",
-                    "allocation_percentage": "5.80%"
-                },
-                {
-                    "rank": 4,
-                    "company_name": "Infosys Limited",
-                    "allocation_percentage": "4.90%"
-                },
+                {"rank": 3, "company_name": "HDFC Bank Ltd", "allocation_percentage": "5.80%"},
+                {"rank": 4, "company_name": "Infosys Limited", "allocation_percentage": "4.90%"},
                 {
                     "rank": 5,
                     "company_name": "CASH",  # Should be excluded
-                    "allocation_percentage": "2.10%"
-                }
-            ]
-        }
+                    "allocation_percentage": "2.10%",
+                },
+            ],
+        },
     }
 
 
@@ -89,17 +81,10 @@ def sample_fund_data_minimal() -> dict[str, Any]:
     """Minimal fund data for edge case testing."""
     return {
         "data": {
-            "fund_info": {
-                "fund_name": "Simple Fund",
-                "aum": "₹100 Cr"
-            },
+            "fund_info": {"fund_name": "Simple Fund", "aum": "₹100 Cr"},
             "top_holdings": [
-                {
-                    "rank": 1,
-                    "company_name": "Apple Inc",
-                    "allocation_percentage": "10.0%"
-                }
-            ]
+                {"rank": 1, "company_name": "Apple Inc", "allocation_percentage": "10.0%"}
+            ],
         }
     }
 
@@ -107,12 +92,7 @@ def sample_fund_data_minimal() -> dict[str, Any]:
 @pytest.fixture
 def sample_fund_data_empty() -> dict[str, Any]:
     """Empty fund data for error handling testing."""
-    return {
-        "data": {
-            "fund_info": {},
-            "top_holdings": []
-        }
-    }
+    return {"data": {"fund_info": {}, "top_holdings": []}}
 
 
 @pytest.fixture
@@ -128,61 +108,72 @@ def sample_fund_data_malformed() -> dict[str, Any]:
                 {
                     "rank": 1,
                     "company_name": "Test Company",
-                    "allocation_percentage": "invalid%"  # Invalid percentage
+                    "allocation_percentage": "invalid%",  # Invalid percentage
                 },
                 {
                     "rank": 2,
                     # Missing company_name
-                    "allocation_percentage": "5.0%"
-                }
-            ]
+                    "allocation_percentage": "5.0%",
+                },
+            ],
         }
     }
 
 
-@pytest.fixture 
+@pytest.fixture
 def multiple_funds_data() -> list[dict[str, Any]]:
     """Multiple fund data for aggregation testing."""
     return [
         {
             "data": {
-                "fund_info": {
-                    "fund_name": "Large Cap Fund A",
-                    "aum": "₹5,000 Cr"
-                },
+                "fund_info": {"fund_name": "Large Cap Fund A", "aum": "₹5,000 Cr"},
                 "top_holdings": [
-                    {"rank": 1, "company_name": "Reliance Industries Ltd", "allocation_percentage": "8.0%"},
+                    {
+                        "rank": 1,
+                        "company_name": "Reliance Industries Ltd",
+                        "allocation_percentage": "8.0%",
+                    },
                     {"rank": 2, "company_name": "TCS Ltd", "allocation_percentage": "6.0%"},
                     {"rank": 3, "company_name": "HDFC Bank Ltd", "allocation_percentage": "5.0%"},
-                ]
+                ],
             }
         },
         {
             "data": {
-                "fund_info": {
-                    "fund_name": "Large Cap Fund B", 
-                    "aum": "₹3,000 Cr"
-                },
+                "fund_info": {"fund_name": "Large Cap Fund B", "aum": "₹3,000 Cr"},
                 "top_holdings": [
-                    {"rank": 1, "company_name": "Reliance Industries Ltd", "allocation_percentage": "7.5%"},  # Same company
+                    {
+                        "rank": 1,
+                        "company_name": "Reliance Industries Ltd",
+                        "allocation_percentage": "7.5%",
+                    },  # Same company
                     {"rank": 2, "company_name": "Infosys Limited", "allocation_percentage": "6.5%"},
                     {"rank": 3, "company_name": "ICICI Bank Ltd", "allocation_percentage": "4.5%"},
-                ]
+                ],
             }
         },
         {
             "data": {
-                "fund_info": {
-                    "fund_name": "Mid Cap Fund A",
-                    "aum": "₹1,500 Cr"
-                },
+                "fund_info": {"fund_name": "Mid Cap Fund A", "aum": "₹1,500 Cr"},
                 "top_holdings": [
-                    {"rank": 1, "company_name": "Bajaj Finance Ltd", "allocation_percentage": "9.0%"},
-                    {"rank": 2, "company_name": "Asian Paints Ltd", "allocation_percentage": "7.0%"},
-                    {"rank": 3, "company_name": "Reliance Industries Ltd", "allocation_percentage": "3.5%"},  # Common across all
-                ]
+                    {
+                        "rank": 1,
+                        "company_name": "Bajaj Finance Ltd",
+                        "allocation_percentage": "9.0%",
+                    },
+                    {
+                        "rank": 2,
+                        "company_name": "Asian Paints Ltd",
+                        "allocation_percentage": "7.0%",
+                    },
+                    {
+                        "rank": 3,
+                        "company_name": "Reliance Industries Ltd",
+                        "allocation_percentage": "3.5%",
+                    },  # Common across all
+                ],
             }
-        }
+        },
     ]
 
 
