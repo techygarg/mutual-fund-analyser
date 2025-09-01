@@ -3,7 +3,7 @@ name: Quick Check
 # Fast workflow for development branches (not main)
 on:
   push:
-    branches-ignore: [ main ]
+    branches: [ main ]
   workflow_dispatch:
 
 # Cancel in-progress workflows for the same branch
