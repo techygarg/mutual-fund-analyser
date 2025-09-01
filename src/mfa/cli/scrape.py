@@ -4,7 +4,7 @@ from pathlib import Path
 
 import orjson
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger, setup_logging
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.utils.paths import ensure_parent
@@ -15,7 +15,8 @@ def _load_urls(urls_file: Path) -> list[str]:
         return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 
-def _get_scraper():
+def _get_scraper() -> ZerodhaCoinScraper:
+    config = ConfigProvider.get_instance()
     headless = str(config.get("scraping.playwright.headless", "true")).lower() == "true"
     return ZerodhaCoinScraper(headless=headless)
 
@@ -30,6 +31,7 @@ def _save_raw_json(doc: dict, filename: str, output_dir: Path) -> Path:
 
 
 def main() -> None:
+    config = ConfigProvider.get_instance()
     config.ensure_directories()
     setup_logging("outputs")
 

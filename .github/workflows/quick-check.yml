@@ -1,0 +1,34 @@
+name: Quick Check
+
+# Fast workflow for development branches (not main)
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Cancel in-progress workflows for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Fast quality check - only linting and unit tests
+  quick-check:
+    name: "⚡ Quick Check (Lint + Unit Tests)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    
+    steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
+    - name: "🐍 Setup Python Environment"
+      uses: ./.github/actions/setup-python
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: "⚡ Run quick checks (code quality + unit tests)"
+      run: .github/scripts/quick-check.sh

@@ -7,16 +7,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 from mfa.storage.json_store import JsonStore
 
 # Technical constants (not user-configurable)
-DATE_PATTERN = r"\d{8}"        # Technical regex
+DATE_PATTERN = r"\d{8}"  # Technical regex
+
 
 @dataclass
 class AnalysisResult:
     """Result of analyzing a single category."""
+
     category: str
     total_files: int
     total_funds: int
@@ -34,6 +36,7 @@ class AnalysisResult:
 @dataclass
 class FundAnalysisResult:
     """Overall result of fund analysis process."""
+
     categories_analyzed: int
     total_categories: int
     category_results: list[AnalysisResult]
@@ -50,6 +53,7 @@ class FundAnalysisResult:
 @dataclass
 class HoldingsData:
     """Container for aggregated holdings data."""
+
     company_to_funds: dict[str, set[str]]
     company_total_weights: dict[str, float]
     company_examples: dict[str, list[str]]
@@ -71,6 +75,7 @@ class HoldingsData:
 @dataclass
 class CompanyAnalysis:
     """Analysis data for a single company."""
+
     name: str
     fund_count: int
     total_weight: float
@@ -80,6 +85,7 @@ class CompanyAnalysis:
 
 class AnalysisError(Exception):
     """Custom exception for analysis errors."""
+
     pass
 
 
@@ -91,8 +97,8 @@ class FundAnalyzer:
     fund overlaps, and investment patterns across different fund categories.
     """
 
-    def __init__(self):
-        self._config = config
+    def __init__(self) -> None:
+        self._config = ConfigProvider.get_instance()
 
     def analyze(self, date: str | None = None, category: str | None = None) -> FundAnalysisResult:
         """
@@ -121,16 +127,16 @@ class FundAnalyzer:
     def _get_analysis_settings(self) -> dict:
         """Get simple analysis settings from config."""
         return {
-            'max_companies': self._config.get("analysis.max_companies_in_results", 100),
-            'max_samples': self._config.get("analysis.max_sample_funds_per_company", 5),
-            'excluded_holdings': set(self._config.get("analysis.exclude_from_analysis", [])),
+            "max_companies": self._config.get("analysis.max_companies_in_results", 100),
+            "max_samples": self._config.get("analysis.max_sample_funds_per_company", 5),
+            "excluded_holdings": set(self._config.get("analysis.exclude_from_analysis", [])),
         }
 
     def _log_welcome_message(self) -> None:
         """Log the welcome banner."""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("📋 MFA ANALYZER - Fund Holdings Analysis")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
     def _setup_directories(self) -> tuple[Path, Path]:
         """Setup and return input and analysis directories."""
@@ -210,7 +216,9 @@ class FundAnalyzer:
         logger.info("📊 Categories to analyze: {}", ", ".join(f"'{cat}'" for cat in categories))
         logger.info("-" * 50)
 
-    def _execute_analysis(self, categories: list[str], scan_root: Path, analysis_dir: Path) -> FundAnalysisResult:
+    def _execute_analysis(
+        self, categories: list[str], scan_root: Path, analysis_dir: Path
+    ) -> FundAnalysisResult:
         """Execute the main analysis process."""
         date_dir = analysis_dir / scan_root.name
         date_dir.mkdir(parents=True, exist_ok=True)
@@ -220,25 +228,28 @@ class FundAnalyzer:
 
         for cat_idx, category in enumerate(categories, 1):
             try:
-                result = self._analyze_single_category(category, scan_root, date_dir, cat_idx, len(categories))
-                category_results.append(result)
+                category_result = self._analyze_single_category(
+                    category, scan_root, date_dir, cat_idx, len(categories)
+                )
+                category_results.append(category_result)
                 successful_analyses += 1
             except Exception as e:
                 logger.error("  ❌ Failed to analyze category '{}': {}", category, str(e))
                 logger.debug("  🔍 Full traceback:", exc_info=True)
 
-        result = FundAnalysisResult(
+        final_result = FundAnalysisResult(
             categories_analyzed=successful_analyses,
             total_categories=len(categories),
             category_results=category_results,
-            output_directory=date_dir
+            output_directory=date_dir,
         )
 
-        self._log_final_summary(result)
-        return result
+        self._log_final_summary(final_result)
+        return final_result
 
-    def _analyze_single_category(self, category: str, scan_root: Path, date_dir: Path,
-                                cat_idx: int, total_categories: int) -> AnalysisResult:
+    def _analyze_single_category(
+        self, category: str, scan_root: Path, date_dir: Path, cat_idx: int, total_categories: int
+    ) -> AnalysisResult:
         """Analyze a single category and return results."""
         logger.info("\n📂 [{}/{}] Analyzing category: '{}'", cat_idx, total_categories, category)
 
@@ -257,7 +268,7 @@ class FundAnalyzer:
             total_files=holdings_data.processed_files_count,
             total_funds=holdings_data.total_funds,
             unique_companies=holdings_data.unique_companies_count,
-            output_file=output_file
+            output_file=output_file,
         )
 
     def _get_category_json_files(self, scan_root: Path, category: str) -> list[Path]:
@@ -269,11 +280,7 @@ class FundAnalyzer:
         """Create an empty analysis result for categories with no data."""
         logger.warning("  ⚠️  No JSON files found for category: {}", category)
         return AnalysisResult(
-            category=category,
-            total_files=0,
-            total_funds=0,
-            unique_companies=0,
-            output_file=Path()
+            category=category, total_files=0, total_funds=0, unique_companies=0, output_file=Path()
         )
 
     def _aggregate_holdings_data(self, json_files: list[Path], category_name: str) -> HoldingsData:
@@ -286,7 +293,7 @@ class FundAnalyzer:
             company_examples=defaultdict(list),
             funds_info={},
             processed_files_count=0,
-            skipped_files_count=0
+            skipped_files_count=0,
         )
 
         for json_file in json_files:
@@ -320,7 +327,7 @@ class FundAnalyzer:
 
         return {
             "name": fund_info_section.get("fund_name") or json_file.stem,
-            "aum": str(fund_info_section.get("aum") or "").strip()
+            "aum": str(fund_info_section.get("aum") or "").strip(),
         }
 
     def _update_fund_registry(self, fund_info: dict[str, str], holdings_data: HoldingsData) -> None:
@@ -329,8 +336,9 @@ class FundAnalyzer:
         if fund_name not in holdings_data.funds_info:
             holdings_data.funds_info[fund_name] = fund_info["aum"]
 
-    def _process_fund_holdings(self, holdings: list[dict[str, Any]], fund_name: str,
-                              holdings_data: HoldingsData) -> None:
+    def _process_fund_holdings(
+        self, holdings: list[dict[str, Any]], fund_name: str, holdings_data: HoldingsData
+    ) -> None:
         """Process all holdings for a single fund."""
         for holding in holdings:
             company_name = self._normalize_company_name(holding.get("company_name", ""))
@@ -347,17 +355,18 @@ class FundAnalyzer:
             return False
 
         analysis_settings = self._get_analysis_settings()
-        return company_name.upper() not in analysis_settings['excluded_holdings']
+        return company_name.upper() not in analysis_settings["excluded_holdings"]
 
-    def _update_company_data(self, company_name: str, fund_name: str, weight: float,
-                            holdings_data: HoldingsData) -> None:
+    def _update_company_data(
+        self, company_name: str, fund_name: str, weight: float, holdings_data: HoldingsData
+    ) -> None:
         """Update company data with new fund information."""
         holdings_data.company_to_funds[company_name].add(fund_name)
         holdings_data.company_total_weights[company_name] += weight
 
         # Add to examples if not already maxed out
         analysis_settings = self._get_analysis_settings()
-        max_samples = analysis_settings['max_samples']
+        max_samples = analysis_settings["max_samples"]
         if len(holdings_data.company_examples[company_name]) < max_samples:
             if fund_name not in holdings_data.company_examples[company_name]:
                 holdings_data.company_examples[company_name].append(fund_name)
@@ -385,7 +394,7 @@ class FundAnalyzer:
     def _build_analysis_output(self, holdings_data: HoldingsData) -> dict[str, Any]:
         """Build the final analysis output dictionary."""
         analysis_settings = self._get_analysis_settings()
-        max_companies = analysis_settings['max_companies']
+        max_companies = analysis_settings["max_companies"]
 
         companies_by_count = self._build_companies_by_fund_count(holdings_data)
         companies_by_weight = self._build_companies_by_total_weight(holdings_data)
@@ -404,7 +413,7 @@ class FundAnalyzer:
     def _build_companies_by_fund_count(self, holdings_data: HoldingsData) -> list[CompanyAnalysis]:
         """Build list of companies sorted by fund count."""
         analysis_settings = self._get_analysis_settings()
-        max_samples = analysis_settings['max_samples']
+        max_samples = analysis_settings["max_samples"]
         companies = []
 
         for company_name, funds_set in holdings_data.company_to_funds.items():
@@ -416,16 +425,18 @@ class FundAnalyzer:
                 fund_count=fund_count,
                 total_weight=round(total_weight, 3),
                 avg_weight=round(total_weight / max(fund_count, 1), 3),
-                sample_funds=sorted(funds_set)[:max_samples]
+                sample_funds=sorted(funds_set)[:max_samples],
             )
             companies.append(company_analysis)
 
         return sorted(companies, key=lambda x: (x.fund_count, x.total_weight), reverse=True)
 
-    def _build_companies_by_total_weight(self, holdings_data: HoldingsData) -> list[CompanyAnalysis]:
+    def _build_companies_by_total_weight(
+        self, holdings_data: HoldingsData
+    ) -> list[CompanyAnalysis]:
         """Build list of companies sorted by total weight."""
         analysis_settings = self._get_analysis_settings()
-        max_samples = analysis_settings['max_samples']
+        max_samples = analysis_settings["max_samples"]
         companies = []
 
         for company_name, total_weight in holdings_data.company_total_weights.items():
@@ -436,7 +447,7 @@ class FundAnalyzer:
                 fund_count=fund_count,
                 total_weight=round(total_weight, 3),
                 avg_weight=round(total_weight / max(fund_count, 1), 3),
-                sample_funds=sorted(holdings_data.company_examples[company_name])[:max_samples]
+                sample_funds=sorted(holdings_data.company_examples[company_name])[:max_samples],
             )
             companies.append(company_analysis)
 
@@ -444,18 +455,19 @@ class FundAnalyzer:
 
     def _build_funds_list(self, funds_info: dict[str, str]) -> list[dict[str, str]]:
         """Build sorted list of fund information."""
-        return [
-            {"name": name, "aum": aum}
-            for name, aum in sorted(funds_info.items())
-        ]
+        return [{"name": name, "aum": aum} for name, aum in sorted(funds_info.items())]
 
-    def _save_analysis_result(self, analysis_data: dict[str, Any], category: str, date_dir: Path) -> Path:
+    def _save_analysis_result(
+        self, analysis_data: dict[str, Any], category: str, date_dir: Path
+    ) -> Path:
         """Save analysis result to file."""
         output_file = date_dir / f"{category}.json"
         JsonStore.save(analysis_data, output_file)
 
         file_size_kb = output_file.stat().st_size / 1024
-        logger.info("  ✅ Analysis complete! Saved to: {} ({:.1f} KB)", output_file.name, file_size_kb)
+        logger.info(
+            "  ✅ Analysis complete! Saved to: {} ({:.1f} KB)", output_file.name, file_size_kb
+        )
 
         return output_file
 
@@ -486,7 +498,9 @@ class FundAnalyzer:
         normalized = name.strip()
 
         # Remove common suffixes
-        normalized = re.sub(r"\b(pvt\.?\s*ltd\.?|private\s+limited|ltd\.?|limited)\b", "", normalized, flags=re.I)
+        normalized = re.sub(
+            r"\b(pvt\.?\s*ltd\.?|private\s+limited|ltd\.?|limited)\b", "", normalized, flags=re.I
+        )
 
         # Normalize spacing
         normalized = re.sub(r"\s*&\s*", " & ", normalized)
@@ -501,9 +515,11 @@ class FundAnalyzer:
 
     def _log_final_summary(self, result: FundAnalysisResult) -> None:
         """Log the final analysis summary."""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("🎉 ANALYSIS COMPLETE!")
-        logger.info("📊 Categories analyzed: {}/{}", result.categories_analyzed, result.total_categories)
+        logger.info(
+            "📊 Categories analyzed: {}/{}", result.categories_analyzed, result.total_categories
+        )
         logger.info("📈 Success rate: {:.1f}%", result.success_rate)
         logger.info("💾 Analysis results saved to: {}", result.output_directory)
-        logger.info("="*60 + "\n")
+        logger.info("=" * 60 + "\n")

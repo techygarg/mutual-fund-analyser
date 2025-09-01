@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.orchestrator import Orchestrator
 
@@ -18,6 +18,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    config = ConfigProvider.get_instance()
     config.ensure_directories()
     setup_logging("outputs")
 
@@ -27,7 +28,7 @@ def main() -> None:
     orchestrator = Orchestrator()
     try:
         result = orchestrator.run(category=category_arg if category_arg else None)
-        print(f"\n🎉 Orchestration completed successfully!")
+        print("\n🎉 Orchestration completed successfully!")
         print(f"📊 Processed {result.processed_count}/{result.total_funds} funds")
     except Exception as e:
         print(f"\n❌ Orchestration failed: {e}")

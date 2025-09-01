@@ -1,5 +1,9 @@
 # Mutual Fund Analyser
 
+![CI Pipeline](https://github.com/techygarg/mutual-fund-analyser/workflows/CI%20Pipeline/badge.svg)
+![Quick Check](https://github.com/techygarg/mutual-fund-analyser/workflows/Quick%20Check/badge.svg)
+[![codecov](https://codecov.io/gh/techygarg/mutual-fund-analyser/branch/main/graph/badge.svg)](https://codecov.io/gh/techygarg/mutual-fund-analyser)
+
 A clean, configurable framework to analyze mutual fund holdings:
 - **Extract** structured data from mutual fund pages (Zerodha Coin) via Playwright
 - **Analyze** the data to find common holdings, overlaps, and investment patterns

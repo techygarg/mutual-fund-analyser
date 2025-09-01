@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 
 from mfa.analysis.analyzer import FundAnalyzer
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
 
 
@@ -15,6 +15,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    config = ConfigProvider.get_instance()
     config.ensure_directories()
     setup_logging("outputs")
 
@@ -22,11 +23,8 @@ def main() -> None:
 
     analyzer = FundAnalyzer()
     try:
-        result = analyzer.analyze(
-            date=args.date,
-            category=args.category
-        )
-        print(f"\n🎉 Analysis completed successfully!")
+        result = analyzer.analyze(date=args.date, category=args.category)
+        print("\n🎉 Analysis completed successfully!")
         print(f"📊 Analyzed {result.categories_analyzed}/{result.total_categories} categories")
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")

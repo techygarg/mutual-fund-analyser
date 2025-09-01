@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean scrape analyze pipeline dashboard status
+.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status
 
 # ==============================================================================
 # CONFIGURATION
@@ -30,6 +30,9 @@ help:
 	@echo "  make lint        - 🔍 Lint with ruff and mypy"
 	@echo "  make check       - ✅ Run format + lint"
 	@echo "  make clean       - 🧹 Clean build artifacts and cache"
+	@echo "  make test        - 🧪 Run all tests (unit + integration)"
+	@echo "  make test-unit   - ⚡ Run unit tests only (fast)"
+	@echo "  make test-integration - 🏭 Run integration tests only"
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
@@ -77,6 +80,24 @@ clean:
 	@rm -rf .mypy_cache .ruff_cache dist build src/*.egg-info
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@echo "$(GREEN)✅ Cleanup complete$(NC)"
+
+test:
+	@$(call check_venv)
+	@echo "$(BLUE)🧪 Running all tests...$(NC)"
+	@python -m pytest tests/ -v
+	@echo "$(GREEN)✅ All tests complete$(NC)"
+
+test-unit:
+	@$(call check_venv)
+	@echo "$(BLUE)🏭 Running unit tests...$(NC)"
+	@python -m pytest tests/unit/ -v
+	@echo "$(GREEN)✅ Unit tests complete$(NC)"
+
+test-integration:
+	@$(call check_venv)
+	@echo "$(BLUE)🏭 Running integration tests...$(NC)"
+	@python -m pytest tests/integration/ -v
+	@echo "$(GREEN)✅ Integration tests complete$(NC)"
 
 # ==============================================================================
 # APPLICATION COMMANDS

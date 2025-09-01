@@ -209,3 +209,6 @@ __marimo__/
 
 outputs/
 .vscode/
+
+# Test integration workspace
+tests/integration/test_workspace/
