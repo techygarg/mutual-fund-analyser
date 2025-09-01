@@ -5,18 +5,10 @@ inputs:
   test-type:
     description: 'Type of test (unit, integration, etc.)'
     required: true
-  results-file:
-    description: 'Path to test results XML file'
-    required: false
-    default: '${{ inputs.test-type }}-test-results.xml'
   upload-coverage:
     description: 'Whether to upload coverage to Codecov'
     required: false
     default: 'false'
-  coverage-flags:
-    description: 'Codecov flags to apply'
-    required: false
-    default: '${{ inputs.test-type }}-tests'
   upload-artifacts-on-failure:
     description: 'Whether to upload debug artifacts on failure'
     required: false
@@ -34,8 +26,8 @@ runs:
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
-        flags: ${{ inputs.coverage-flags }}
-        name: ${{ inputs.coverage-flags }}-coverage
+        flags: ${{ inputs.test-type }}-tests
+        name: ${{ inputs.test-type }}-tests-coverage
         token: ${{ env.CODECOV_TOKEN }}
         
     - name: "📋 Upload ${{ inputs.test-type }} test results"
@@ -43,7 +35,7 @@ runs:
       if: always()
       with:
         name: ${{ inputs.test-type }}-test-results
-        path: ${{ inputs.results-file }}
+        path: ${{ inputs.test-type }}-test-results.xml
         
     - name: "📸 Upload test artifacts (on failure)"
       if: failure() && inputs.upload-artifacts-on-failure == 'true'
