@@ -1,0 +1,53 @@
+name: 'Upload Test Results'
+description: 'Upload test results and artifacts with standardized naming'
+
+inputs:
+  test-type:
+    description: 'Type of test (unit, integration, etc.)'
+    required: true
+  results-file:
+    description: 'Path to test results XML file'
+    required: false
+    default: '${{ inputs.test-type }}-test-results.xml'
+  upload-coverage:
+    description: 'Whether to upload coverage to Codecov'
+    required: false
+    default: 'false'
+  coverage-flags:
+    description: 'Codecov flags to apply'
+    required: false
+    default: '${{ inputs.test-type }}-tests'
+  upload-artifacts-on-failure:
+    description: 'Whether to upload debug artifacts on failure'
+    required: false
+    default: 'false'
+  artifact-paths:
+    description: 'Paths to upload as artifacts on failure (newline separated)'
+    required: false
+    default: '*.log'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: "📊 Upload coverage to Codecov"
+      if: inputs.upload-coverage == 'true'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: ${{ inputs.coverage-flags }}
+        name: ${{ inputs.coverage-flags }}-coverage
+        token: ${{ env.CODECOV_TOKEN }}
+        
+    - name: "📋 Upload ${{ inputs.test-type }} test results"
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ inputs.test-type }}-test-results
+        path: ${{ inputs.results-file }}
+        
+    - name: "📸 Upload test artifacts (on failure)"
+      if: failure() && inputs.upload-artifacts-on-failure == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.test-type }}-debug-artifacts
+        path: ${{ inputs.artifact-paths }}
