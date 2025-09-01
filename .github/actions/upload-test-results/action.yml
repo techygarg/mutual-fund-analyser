@@ -23,7 +23,7 @@ runs:
   steps:
     - name: "📊 Upload coverage to Codecov"
       if: inputs.upload-coverage == 'true'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
         flags: ${{ inputs.test-type }}-tests
