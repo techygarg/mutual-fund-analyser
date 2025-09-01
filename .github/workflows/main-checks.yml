@@ -32,3 +32,9 @@ jobs:
         
     - name: "⚡ Run quick checks (code quality + unit tests)"
       run: .github/scripts/quick-check.sh
+
+    - name: "📊 Upload Results & Coverage"
+      uses: ./.github/actions/upload-test-results
+      with:
+        test-type: unit
+        upload-coverage: 'true'
