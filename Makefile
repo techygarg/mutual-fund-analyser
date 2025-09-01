@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean test test-integration scrape analyze pipeline dashboard status
+.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status
 
 # ==============================================================================
 # CONFIGURATION
@@ -31,7 +31,7 @@ help:
 	@echo "  make check       - ✅ Run format + lint"
 	@echo "  make clean       - 🧹 Clean build artifacts and cache"
 	@echo "  make test        - 🧪 Run all tests (unit + integration)"
-	@echo "  make test-unit   - 🏭 Run unit tests only"
+	@echo "  make test-unit   - ⚡ Run unit tests only (fast)"
 	@echo "  make test-integration - 🏭 Run integration tests only"
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""

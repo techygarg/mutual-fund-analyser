@@ -1,0 +1,22 @@
+# Unit Test Configuration - Simple settings for unit testing
+# =============================================================================
+
+# Directory paths (will be overridden by individual tests to use temp dirs)
+paths:
+  output_dir: outputs/extracted_json
+  analysis_dir: outputs/analysis
+
+# Analysis preferences for unit testing
+analysis:
+  max_companies_in_results: 10      # Small number for testing
+  max_sample_funds_per_company: 3   # Small number for testing
+  exclude_from_analysis:
+    - "TREPS"        # Treasury Repo
+    - "CASH"         # Cash holdings  
+    - "T-BILLS"      # Treasury Bills
+    - "REVERSE REPO" # Reverse Repo
+
+# Output formatting
+output:
+  filename_prefix: "test_"
+  include_date_in_folder: true
