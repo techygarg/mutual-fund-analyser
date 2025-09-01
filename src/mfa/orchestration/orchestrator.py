@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -66,7 +66,7 @@ class Orchestrator:
     logging and result tracking.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._config = ConfigProvider.get_instance()
         self._scraper: ZerodhaCoinScraper | None = None
 
@@ -226,12 +226,12 @@ class Orchestrator:
         """Process all URLs in a single category."""
         self._log_category_start(category, urls, category_index, total_categories, output_root)
 
-        category_start_time = datetime.now(UTC)
+        category_start_time = datetime.now(timezone.utc)
         stats = {"successful": 0, "failed": 0}
 
         self._process_category_urls(category, urls, output_root, stats, scraper)
 
-        duration = (datetime.now(UTC) - category_start_time).total_seconds()
+        duration = (datetime.now(timezone.utc) - category_start_time).total_seconds()
         result = CategoryResult(
             category=category,
             total_urls=len(urls),
@@ -307,9 +307,9 @@ class Orchestrator:
         fund_name = self._extract_fund_name_from_url(url)
         self._log_url_processing_start(url, url_index, total_urls, fund_name)
 
-        start_time = datetime.now(UTC)
+        start_time = datetime.now(timezone.utc)
         result = scraper.scrape(url)
-        duration = (datetime.now(UTC) - start_time).total_seconds()
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
 
         output_file = self._save_scraping_result(url, result, target_dir)
         holdings_count = self._extract_holdings_count(result)
@@ -364,7 +364,7 @@ class Orchestrator:
 
     def _get_today_string(self) -> str:
         """Get today's date as formatted string."""
-        return datetime.now(UTC).strftime(DATE_FORMAT)
+        return datetime.now(timezone.utc).strftime(DATE_FORMAT)
 
     def _create_safe_filename_from_url(self, url: str) -> str:
         """Extract safe filename components from URL."""

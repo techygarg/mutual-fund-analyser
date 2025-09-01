@@ -97,7 +97,7 @@ class FundAnalyzer:
     fund overlaps, and investment patterns across different fund categories.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._config = ConfigProvider.get_instance()
 
     def analyze(self, date: str | None = None, category: str | None = None) -> FundAnalysisResult:
@@ -228,24 +228,24 @@ class FundAnalyzer:
 
         for cat_idx, category in enumerate(categories, 1):
             try:
-                result = self._analyze_single_category(
+                category_result = self._analyze_single_category(
                     category, scan_root, date_dir, cat_idx, len(categories)
                 )
-                category_results.append(result)
+                category_results.append(category_result)
                 successful_analyses += 1
             except Exception as e:
                 logger.error("  ❌ Failed to analyze category '{}': {}", category, str(e))
                 logger.debug("  🔍 Full traceback:", exc_info=True)
 
-        result = FundAnalysisResult(
+        final_result = FundAnalysisResult(
             categories_analyzed=successful_analyses,
             total_categories=len(categories),
             category_results=category_results,
             output_directory=date_dir,
         )
 
-        self._log_final_summary(result)
-        return result
+        self._log_final_summary(final_result)
+        return final_result
 
     def _analyze_single_category(
         self, category: str, scan_root: Path, date_dir: Path, cat_idx: int, total_categories: int

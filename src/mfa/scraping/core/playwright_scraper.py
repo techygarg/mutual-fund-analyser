@@ -5,8 +5,19 @@ from collections.abc import Iterable
 from typing import Any
 
 from loguru import logger
-from playwright.sync_api import TimeoutError as PwTimeoutError
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+    ElementHandle,
+    Locator,
+    Page,
+    Playwright,
+    ViewportSize,
+    sync_playwright,
+)
+from playwright.sync_api import (
+    TimeoutError as PwTimeoutError,
+)
 
 
 class PlaywrightSession:
@@ -14,15 +25,15 @@ class PlaywrightSession:
         self,
         headless: bool = True,
         nav_timeout_ms: int = 30000,
-        viewport: dict[str, int] | None = None,
+        viewport: ViewportSize | None = None,
     ) -> None:
         self._headless = headless
         self._timeout = nav_timeout_ms
-        self._viewport = viewport or {"width": 1440, "height": 2200}
-        self._p = None
-        self._browser = None
-        self._context = None
-        self._page = None
+        self._viewport = viewport or ViewportSize(width=1440, height=2200)
+        self._p: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
+        self._page: Page | None = None
 
     def open(self) -> None:
         if self._p is not None:
@@ -32,7 +43,7 @@ class PlaywrightSession:
         self._context = self._browser.new_context(viewport=self._viewport)
         self._page = self._context.new_page()
 
-    def goto(self, url: str):
+    def goto(self, url: str) -> Page:
         assert self._page is not None
         try:
             self._page.goto(url, timeout=self._timeout, wait_until="networkidle")
@@ -41,7 +52,7 @@ class PlaywrightSession:
         logger.debug("Navigated to {} (final URL: {})", url, self._page.url)
         return self._page
 
-    def page(self):
+    def page(self) -> Page | None:
         return self._page
 
     def close(self) -> None:
@@ -101,7 +112,7 @@ class PlaywrightScraper:
         return results
 
     # ---- helpers ----
-    def goto(self, url: str):
+    def goto(self, url: str) -> Page:
         # Lazy-open session if needed to avoid assertion errors
         try:
             pg = self.session.page()
@@ -111,10 +122,10 @@ class PlaywrightScraper:
             self.session.open()
         return self.session.goto(url)
 
-    def get_body_text(self, page) -> str:
+    def get_body_text(self, page: Page) -> str:
         return re.sub(r"[\t\r\f]+", " ", page.inner_text("body"))
 
-    def click_holdings_tab(self, page) -> None:
+    def click_holdings_tab(self, page: Page) -> None:
         for pattern in self.HOLDINGS_TAB_PATTERNS:
             # role-based tab
             try:
@@ -144,7 +155,7 @@ class PlaywrightScraper:
             except Exception:
                 pass
 
-    def click_show_all(self, page) -> None:
+    def click_show_all(self, page: Page) -> None:
         for label in self.SHOW_ALL_LABELS:
             # button with accessible name
             try:
@@ -174,7 +185,7 @@ class PlaywrightScraper:
             except Exception:
                 pass
 
-    def ensure_top_holdings_visible(self, page) -> None:
+    def ensure_top_holdings_visible(self, page: Page) -> None:
         try:
             page.get_by_text(
                 re.compile(r"(top\s+)?holdings", re.I)
@@ -187,7 +198,7 @@ class PlaywrightScraper:
             except Exception:
                 pass
 
-    def scroll_page(self, page, steps: int = 5, dy: int = 900) -> None:
+    def scroll_page(self, page: Page, steps: int = 5, dy: int = 900) -> None:
         for _ in range(max(1, steps)):
             try:
                 page.mouse.wheel(0, dy)
@@ -195,7 +206,7 @@ class PlaywrightScraper:
             except Exception:
                 break
 
-    def extract_heading(self, page) -> str | None:
+    def extract_heading(self, page: Page) -> str | None:
         try:
             return page.locator("h1").first.inner_text(timeout=1500).strip()
         except Exception:
@@ -204,7 +215,7 @@ class PlaywrightScraper:
             except Exception:
                 return None
 
-    def find_holdings_table(self, page):
+    def find_holdings_table(self, page: Page) -> ElementHandle | None:
         try:
             heading = page.get_by_role("heading", name=re.compile(r"^top\s+holdings$", re.I)).first
             h = heading.element_handle(timeout=1000)
@@ -243,17 +254,24 @@ class PlaywrightScraper:
             pass
         return None
 
-    def parse_holdings_from_table(self, page, tbl) -> list[dict[str, Any]]:
+    def parse_holdings_from_table(
+        self, page: Page, tbl: ElementHandle | Locator | None
+    ) -> list[dict[str, Any]]:
         if not tbl:
             return []
         res: list[dict[str, Any]] = []
         # Get rows within this table robustly for both Locator and ElementHandle
         rows: list[Any] = []
-        try:
-            rows = tbl.locator("tr").all()  # Locator path
-        except Exception:
+        if hasattr(tbl, "locator"):
+            # This is a Locator object
             try:
-                rows = tbl.query_selector_all("tr")  # ElementHandle path
+                rows = tbl.locator("tr").all()
+            except Exception:
+                rows = []
+        else:
+            # This is an ElementHandle object
+            try:
+                rows = tbl.query_selector_all("tr")
             except Exception:
                 rows = []
         rank = 1
@@ -262,9 +280,14 @@ class PlaywrightScraper:
         for r in rows[start_index:80]:
             # Get cell locators/handles
             cells: list[Any] = []
-            try:
-                cells = r.locator("td").all()
-            except Exception:
+            if hasattr(r, "locator"):
+                # This is a Locator object
+                try:
+                    cells = r.locator("td").all()
+                except Exception:
+                    cells = []
+            else:
+                # This is an ElementHandle object
                 try:
                     cells = r.query_selector_all("td")
                 except Exception:
@@ -303,7 +326,7 @@ class PlaywrightScraper:
                 break
         return res
 
-    def parse_holdings_from_any_table(self, page) -> list[dict[str, Any]]:
+    def parse_holdings_from_any_table(self, page: Page) -> list[dict[str, Any]]:
         # Look for the first few tables near the Top holdings section, then parse
         try:
             containers = [

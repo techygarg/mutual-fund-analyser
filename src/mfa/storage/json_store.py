@@ -145,7 +145,10 @@ class JsonStore:
     def _read_json_file(file_path: Path) -> dict[str, Any]:
         """Read and parse JSON file."""
         with open(file_path, "rb") as file_handle:
-            return orjson.loads(file_handle.read())
+            data = orjson.loads(file_handle.read())
+            if not isinstance(data, dict):
+                raise ValueError(f"Expected JSON object, got {type(data)}")
+            return data
 
     @staticmethod
     def _is_readable(file_path: Path) -> bool:

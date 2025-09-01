@@ -4,6 +4,9 @@ import re
 from datetime import datetime
 from typing import Any
 
+from playwright.sync_api import Page
+from pydantic import HttpUrl
+
 from mfa.logging.logger import logger
 from mfa.models.schemas import ExtractedFundDocument, FundData, FundInfo, TopHolding
 from mfa.scraping.core.playwright_scraper import PlaywrightScraper, PlaywrightSession
@@ -62,7 +65,7 @@ def _extract_meta_fields(body_text: str) -> dict[str, Any]:
     }
 
 
-def _parse_top_holdings(page, base: PlaywrightScraper) -> list[dict[str, Any]]:
+def _parse_top_holdings(page: Page, base: PlaywrightScraper) -> list[dict[str, Any]]:
     tbl = base.find_holdings_table(page)
     if tbl:
         res = base.parse_holdings_from_table(page, tbl)
@@ -76,7 +79,7 @@ def _parse_top_holdings(page, base: PlaywrightScraper) -> list[dict[str, Any]]:
         section = page.get_by_role("heading", name=re.compile(r"^top\s+holdings$", re.I)).first
         container = section.locator("xpath=ancestor::*[self::section or self::div][1]")
     except Exception:
-        container = page
+        container = page.locator("body")
     nodes = container.locator(
         r"text=/\b\d{1,2}(?:\.\d+)?%\b/"
     ).all()  # percent tokens within Top holdings
@@ -153,7 +156,7 @@ def _build_document(
     fd = FundData(fund_info=fi, top_holdings=th)
     doc = ExtractedFundDocument(
         extraction_timestamp=datetime.utcnow(),
-        source_url=url,
+        source_url=HttpUrl(url),
         provider="playwright",
         data=fd,
     )

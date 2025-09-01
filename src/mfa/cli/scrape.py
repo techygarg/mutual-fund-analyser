@@ -15,7 +15,7 @@ def _load_urls(urls_file: Path) -> list[str]:
         return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 
-def _get_scraper():
+def _get_scraper() -> ZerodhaCoinScraper:
     config = ConfigProvider.get_instance()
     headless = str(config.get("scraping.playwright.headless", "true")).lower() == "true"
     return ZerodhaCoinScraper(headless=headless)
