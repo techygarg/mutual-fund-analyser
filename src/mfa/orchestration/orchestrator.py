@@ -19,6 +19,7 @@ DATE_FORMAT = "%Y%m%d"
 @dataclass
 class CategoryResult:
     """Result of processing a single category."""
+
     category: str
     total_urls: int
     successful: int
@@ -36,6 +37,7 @@ class CategoryResult:
 @dataclass
 class OrchestrationResult:
     """Overall result of orchestration process."""
+
     total_funds: int
     processed_count: int
     category_results: list[CategoryResult]
@@ -51,6 +53,7 @@ class OrchestrationResult:
 
 class OrchestrationError(Exception):
     """Custom exception for orchestration errors."""
+
     pass
 
 
@@ -93,23 +96,23 @@ class Orchestrator:
     def _get_scraping_settings(self) -> dict:
         """Get simple scraping settings from config."""
         return {
-            'headless': self._config.get("scraping.headless", True),
-            'timeout_seconds': self._config.get("scraping.timeout_seconds", 30),
-            'delay_seconds': self._config.get("scraping.delay_between_requests", 1.0),
+            "headless": self._config.get("scraping.headless", True),
+            "timeout_seconds": self._config.get("scraping.timeout_seconds", 30),
+            "delay_seconds": self._config.get("scraping.delay_between_requests", 1.0),
         }
 
     def _get_output_settings(self) -> dict:
         """Get output settings from config."""
         return {
-            'filename_prefix': self._config.get("output.filename_prefix", "coin_"),
-            'include_date_in_folder': self._config.get("output.include_date_in_folder", True),
+            "filename_prefix": self._config.get("output.filename_prefix", "coin_"),
+            "include_date_in_folder": self._config.get("output.include_date_in_folder", True),
         }
 
     def _log_welcome_message(self) -> None:
         """Log the welcome banner."""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("🎭 MFA ORCHESTRATOR - Fund Data Collection")
-        logger.info("="*60)
+        logger.info("=" * 60)
 
     def _get_output_directory(self) -> Path:
         """Get the configured output directory."""
@@ -127,19 +130,25 @@ class Orchestrator:
 
         return funds
 
-    def _select_categories(self, funds: dict[str, list[str]], category: str | None) -> dict[str, list[str]]:
+    def _select_categories(
+        self, funds: dict[str, list[str]], category: str | None
+    ) -> dict[str, list[str]]:
         """Select which categories to process based on input."""
         if category:
             return self._select_single_category(funds, category)
         else:
             return self._select_all_categories(funds)
 
-    def _select_single_category(self, funds: dict[str, list[str]], category: str) -> dict[str, list[str]]:
+    def _select_single_category(
+        self, funds: dict[str, list[str]], category: str
+    ) -> dict[str, list[str]]:
         """Select and validate a single category."""
         if category not in funds:
             available_categories = sorted(funds.keys())
             logger.error("❌ Unknown category: '{}'", category)
-            logger.info("📂 Available categories: {}", ", ".join(f"'{cat}'" for cat in available_categories))
+            logger.info(
+                "📂 Available categories: {}", ", ".join(f"'{cat}'" for cat in available_categories)
+            )
             logger.info("💡 Use: make orchestrate CATEGORY=<category_name>")
             raise OrchestrationError(f"Unknown category: {category}")
 
@@ -151,27 +160,32 @@ class Orchestrator:
         logger.info("🌟 Processing all {} categories", len(funds))
         return funds
 
-    def _log_processing_overview(self, selected_categories: dict[str, list[str]], output_root: Path) -> None:
+    def _log_processing_overview(
+        self, selected_categories: dict[str, list[str]], output_root: Path
+    ) -> None:
         """Log overview of what will be processed."""
         total_urls = sum(len(urls) for urls in selected_categories.values())
 
         logger.info("\n🚀 Starting fund data collection...")
-        logger.info("📊 Categories: {}", ", ".join(f"'{cat}'" for cat in sorted(selected_categories.keys())))
+        logger.info(
+            "📊 Categories: {}", ", ".join(f"'{cat}'" for cat in sorted(selected_categories.keys()))
+        )
         logger.info("📈 Total funds to process: {}", total_urls)
         logger.info("📁 Output directory: {}", output_root)
         logger.info("-" * 50)
 
-    def _execute_orchestration(self, selected_categories: dict[str, list[str]],
-                              output_root: Path) -> OrchestrationResult:
+    def _execute_orchestration(
+        self, selected_categories: dict[str, list[str]], output_root: Path
+    ) -> OrchestrationResult:
         """Execute the main orchestration process."""
         total_urls = sum(len(urls) for urls in selected_categories.values())
         processed_count = 0
         category_results = []
-        
+
         # Create ONE scraper for entire orchestration run
         scraper = self._create_scraper()
         logger.debug("🎡 Created shared scraper session for all categories")
-        
+
         try:
             for category_idx, (cat_name, urls) in enumerate(selected_categories.items(), 1):
                 cat_result = self._process_category(
@@ -180,13 +194,13 @@ class Orchestrator:
                     category_index=category_idx,
                     total_categories=len(selected_categories),
                     output_root=output_root,
-                    scraper=scraper  # Pass existing scraper
+                    scraper=scraper,  # Pass existing scraper
                 )
                 category_results.append(cat_result)
                 processed_count += cat_result.successful
         finally:
             # Close scraper session after ALL categories are done
-            if hasattr(scraper, 'session') and scraper.session:
+            if hasattr(scraper, "session") and scraper.session:
                 scraper.session.close()
                 logger.debug("🔒 Closed scraper session after processing all categories")
 
@@ -194,14 +208,21 @@ class Orchestrator:
             total_funds=total_urls,
             processed_count=processed_count,
             category_results=category_results,
-            output_directory=output_root
+            output_directory=output_root,
         )
 
         self._log_final_summary(result)
         return result
 
-    def _process_category(self, category: str, urls: list[str], category_index: int,
-                         total_categories: int, output_root: Path, scraper: ZerodhaCoinScraper) -> CategoryResult:
+    def _process_category(
+        self,
+        category: str,
+        urls: list[str],
+        category_index: int,
+        total_categories: int,
+        output_root: Path,
+        scraper: ZerodhaCoinScraper,
+    ) -> CategoryResult:
         """Process all URLs in a single category."""
         self._log_category_start(category, urls, category_index, total_categories, output_root)
 
@@ -216,33 +237,44 @@ class Orchestrator:
             total_urls=len(urls),
             successful=stats["successful"],
             failed=stats["failed"],
-            duration_seconds=duration
+            duration_seconds=duration,
         )
 
         self._log_category_summary(result)
         return result
 
-    def _log_category_start(self, category: str, urls: list[str], category_index: int,
-                           total_categories: int, output_root: Path) -> None:
+    def _log_category_start(
+        self,
+        category: str,
+        urls: list[str],
+        category_index: int,
+        total_categories: int,
+        output_root: Path,
+    ) -> None:
         """Log the start of category processing."""
         target_dir = self._get_category_directory(output_root, category)
-        logger.info("\n📂 [{}/{}] Processing category: '{}'", category_index, total_categories, category)
+        logger.info(
+            "\n📂 [{}/{}] Processing category: '{}'", category_index, total_categories, category
+        )
         logger.info("🔗 URLs in category: {}", len(urls))
         logger.info("💾 Saving to: {}", target_dir)
 
     def _create_scraper(self) -> ZerodhaCoinScraper:
         """Create scraper with user configuration."""
         settings = self._get_scraping_settings()
-        timeout_ms = int(settings['timeout_seconds'] * 1000)  # Convert to ms
+        timeout_ms = int(settings["timeout_seconds"] * 1000)  # Convert to ms
 
-        session = PlaywrightSession(
-            headless=settings['headless'],
-            nav_timeout_ms=timeout_ms
-        )
+        session = PlaywrightSession(headless=settings["headless"], nav_timeout_ms=timeout_ms)
         return ZerodhaCoinScraper(session=session)
 
-    def _process_category_urls(self, category: str, urls: list[str],
-                              output_root: Path, stats: dict[str, int], scraper: ZerodhaCoinScraper) -> None:
+    def _process_category_urls(
+        self,
+        category: str,
+        urls: list[str],
+        output_root: Path,
+        stats: dict[str, int],
+        scraper: ZerodhaCoinScraper,
+    ) -> None:
         """Process all URLs in a category."""
         target_dir = self._get_category_directory(output_root, category)
 
@@ -254,7 +286,7 @@ class Orchestrator:
 
                 # Add delay between requests (except for the last one)
                 if url_index < len(urls):
-                    delay_seconds = settings['delay_seconds']
+                    delay_seconds = settings["delay_seconds"]
                     if delay_seconds > 0:
                         logger.debug("  ⏳ Waiting {:.1f}s before next request...", delay_seconds)
                         time.sleep(delay_seconds)
@@ -263,8 +295,14 @@ class Orchestrator:
                 self._handle_url_processing_error(url, exc)
                 stats["failed"] += 1
 
-    def _process_single_url(self, url: str, url_index: int, total_urls: int,
-                           target_dir: Path, scraper: ZerodhaCoinScraper) -> None:
+    def _process_single_url(
+        self,
+        url: str,
+        url_index: int,
+        total_urls: int,
+        target_dir: Path,
+        scraper: ZerodhaCoinScraper,
+    ) -> None:
         """Process a single URL and save the result."""
         fund_name = self._extract_fund_name_from_url(url)
         self._log_url_processing_start(url, url_index, total_urls, fund_name)
@@ -283,7 +321,9 @@ class Orchestrator:
         safe_name = self._create_safe_filename_from_url(url)
         return safe_name.replace("_", " ").title()
 
-    def _log_url_processing_start(self, url: str, url_index: int, total_urls: int, fund_name: str) -> None:
+    def _log_url_processing_start(
+        self, url: str, url_index: int, total_urls: int, fund_name: str
+    ) -> None:
         """Log the start of processing a single URL."""
         logger.info("\n  📊 [{}/{}] Processing: {}", url_index, total_urls, fund_name)
         logger.info("  🌐 URL: {}", url)
@@ -291,7 +331,9 @@ class Orchestrator:
     def _save_scraping_result(self, url: str, result: dict[str, Any], target_dir: Path) -> Path:
         """Save scraping result using configured filename pattern."""
         output_settings = self._get_output_settings()
-        filename = f"{output_settings['filename_prefix']}{self._create_safe_filename_from_url(url)}.json"
+        filename = (
+            f"{output_settings['filename_prefix']}{self._create_safe_filename_from_url(url)}.json"
+        )
         output_file = target_dir / filename
         JsonStore.save(result, output_file)
         return output_file
@@ -300,7 +342,9 @@ class Orchestrator:
         """Extract the number of holdings from scraping result."""
         return len(result.get("data", {}).get("top_holdings", []))
 
-    def _log_url_processing_success(self, holdings_count: int, duration: float, output_file: Path) -> None:
+    def _log_url_processing_success(
+        self, holdings_count: int, duration: float, output_file: Path
+    ) -> None:
         """Log successful URL processing."""
         logger.info("  ✅ Success! Scraped {} holdings in {:.1f}s", holdings_count, duration)
         logger.info("  💾 Saved: {}", output_file.name)
@@ -339,9 +383,9 @@ class Orchestrator:
 
     def _log_final_summary(self, result: OrchestrationResult) -> None:
         """Log the final summary of orchestration."""
-        logger.info("\n" + "="*60)
+        logger.info("\n" + "=" * 60)
         logger.info("🎉 ORCHESTRATION COMPLETE!")
         logger.info("📊 Total funds processed: {}/{}", result.processed_count, result.total_funds)
         logger.info("📈 Overall success rate: {:.1f}%", result.overall_success_rate)
         logger.info("📁 Results saved to: {}", result.output_directory)
-        logger.info("="*60 + "\n")
+        logger.info("=" * 60 + "\n")

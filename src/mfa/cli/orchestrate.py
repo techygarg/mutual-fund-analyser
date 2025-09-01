@@ -28,7 +28,7 @@ def main() -> None:
     orchestrator = Orchestrator()
     try:
         result = orchestrator.run(category=category_arg if category_arg else None)
-        print(f"\n🎉 Orchestration completed successfully!")
+        print("\n🎉 Orchestration completed successfully!")
         print(f"📊 Processed {result.processed_count}/{result.total_funds} funds")
     except Exception as e:
         print(f"\n❌ Orchestration failed: {e}")

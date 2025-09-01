@@ -10,6 +10,7 @@ from mfa.logging.logger import logger
 
 class JsonStorageError(Exception):
     """Custom exception for JSON storage operations."""
+
     pass
 
 

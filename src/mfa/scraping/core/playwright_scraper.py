@@ -125,13 +125,13 @@ class PlaywrightScraper:
                 pass
             # anchor or button with text
             try:
-                page.locator("a:has-text('%s')" % pattern).first.click(timeout=1800)
+                page.locator(f"a:has-text('{pattern}')").first.click(timeout=1800)
                 page.wait_for_timeout(200)
                 return
             except Exception:
                 pass
             try:
-                page.locator("button:has-text('%s')" % pattern).first.click(timeout=1800)
+                page.locator(f"button:has-text('{pattern}')").first.click(timeout=1800)
                 page.wait_for_timeout(200)
                 return
             except Exception:
@@ -155,13 +155,13 @@ class PlaywrightScraper:
                 pass
             # explicit button/anchor contains
             try:
-                page.locator("button:has-text('%s')" % label).first.click(timeout=1200)
+                page.locator(f"button:has-text('{label}')").first.click(timeout=1200)
                 page.wait_for_timeout(250)
                 return
             except Exception:
                 pass
             try:
-                page.locator("a:has-text('%s')" % label).first.click(timeout=1200)
+                page.locator(f"a:has-text('{label}')").first.click(timeout=1200)
                 page.wait_for_timeout(250)
                 return
             except Exception:

@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-
 
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 ANALYSIS_ROOT = ROOT / "outputs" / "analysis"
@@ -34,7 +32,7 @@ def index() -> FileResponse:
 def list_dates() -> JSONResponse:
     if not ANALYSIS_ROOT.exists():
         return JSONResponse(content={"dates": []})
-    dates: List[str] = sorted([p.name for p in ANALYSIS_ROOT.iterdir() if p.is_dir()])
+    dates: list[str] = sorted([p.name for p in ANALYSIS_ROOT.iterdir() if p.is_dir()])
     return JSONResponse(content={"dates": dates})
 
 
@@ -52,15 +50,17 @@ def get_data(date: str, category: str) -> JSONResponse:
     fp = ANALYSIS_ROOT / date / f"{category}.json"
     if not fp.exists():
         # graceful empty structure
-        return JSONResponse(content={
-            "total_files": 0,
-            "total_funds": 0,
-            "funds": [],
-            "unique_companies": 0,
-            "top_by_fund_count": [],
-            "top_by_total_weight": [],
-            "common_in_all_funds": [],
-        })
+        return JSONResponse(
+            content={
+                "total_files": 0,
+                "total_funds": 0,
+                "funds": [],
+                "unique_companies": 0,
+                "top_by_fund_count": [],
+                "top_by_total_weight": [],
+                "common_in_all_funds": [],
+            }
+        )
     data = json.loads(fp.read_text(encoding="utf-8"))
     return JSONResponse(content=data)
 
@@ -83,15 +83,17 @@ def get_funds(date: str, category: str) -> JSONResponse:
                 w = h.get("allocation_percentage") or ""
                 # parse percent
                 try:
-                    wv = float(str(w).replace('%','').strip())
+                    wv = float(str(w).replace("%", "").strip())
                 except Exception:
                     wv = 0.0
                 parsed.append({"company": name, "weight": wv})
-            items.append({
-                "fund_name": fund.get("fund_name") or fp.stem,
-                "aum": fund.get("aum") or "",
-                "holdings": parsed,
-            })
+            items.append(
+                {
+                    "fund_name": fund.get("fund_name") or fp.stem,
+                    "aum": fund.get("aum") or "",
+                    "holdings": parsed,
+                }
+            )
         except Exception:
             continue
     return JSONResponse(content={"funds": items})
@@ -104,5 +106,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("mfa.web.server:app", host="0.0.0.0", port=8787, reload=True)
-
-

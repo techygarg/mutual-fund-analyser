@@ -1,0 +1,72 @@
+name: Quick Check
+
+# Fast workflow for development branches (not main)
+on:
+  push:
+    branches-ignore: [ main ]
+  workflow_dispatch:
+
+# Cancel in-progress workflows for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Fast quality check - only linting and unit tests
+  quick-check:
+    name: "⚡ Quick Check (Lint + Unit Tests)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
+    - name: "🐍 Set up Python ${{ env.PYTHON_VERSION }}"
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: "📦 Cache pip dependencies"
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: "⚙️ Install dependencies"
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+        
+    - name: "✨ Check code formatting"
+      run: ruff format --check src tests
+      
+    - name: "🔍 Lint code"
+      run: ruff check src tests
+      
+    - name: "🔎 Type check"
+      run: mypy src
+      
+    - name: "⚡ Run unit tests"
+      run: |
+        python -m pytest tests/unit/ \
+          --cov=src/mfa \
+          --cov-report=term-missing \
+          -x \
+          --tb=short
+          
+    - name: "✅ Quick check summary"
+      if: success()
+      run: |
+        echo "🎉 Quick check passed!"
+        echo "✅ Code formatting: PASSED"
+        echo "✅ Linting: PASSED"
+        echo "✅ Type checking: PASSED"
+        echo "✅ Unit tests: PASSED"
+        echo ""
+        echo "💡 Push to main or create PR to run full test suite with integration tests."

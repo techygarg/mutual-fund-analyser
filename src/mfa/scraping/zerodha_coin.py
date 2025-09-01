@@ -216,15 +216,15 @@ class ZerodhaCoinScraper(PlaywrightScraper):
             logger.debug("📋 Extracting fund information...")
             body_text = self.get_body_text(page)
             fund_name = self.extract_heading(page)
-            
+
             if fund_name:
                 logger.debug("🏦 Fund name: {}", fund_name)
             else:
                 logger.debug("⚠️ Fund name not found")
-                
+
             logger.debug("🔍 Extracting metadata (NAV, AUM, etc.)...")
             meta = _extract_meta_fields(body_text)
-            
+
             logger.debug("📈 Parsing holdings data...")
             holdings = _parse_top_holdings(page, self)
             # Validate and report holdings extraction
@@ -235,13 +235,13 @@ class ZerodhaCoinScraper(PlaywrightScraper):
                 logger.info("💡 This might indicate incomplete data extraction")
             else:
                 logger.debug("✅ Successfully extracted {} holdings", len(holdings))
-                
+
             # Log some key metadata if available
             if meta.get("aum"):
                 logger.debug("💰 AUM: {}", meta["aum"])
             if meta.get("expense_ratio"):
                 logger.debug("📊 Expense Ratio: {}", meta["expense_ratio"])
-                
+
             logger.debug("🗺️ Building final document...")
             return _build_document(url, fund_name, meta, holdings)
         except Exception as e:

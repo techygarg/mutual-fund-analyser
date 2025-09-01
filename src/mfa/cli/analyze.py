@@ -23,11 +23,8 @@ def main() -> None:
 
     analyzer = FundAnalyzer()
     try:
-        result = analyzer.analyze(
-            date=args.date,
-            category=args.category
-        )
-        print(f"\n🎉 Analysis completed successfully!")
+        result = analyzer.analyze(date=args.date, category=args.category)
+        print("\n🎉 Analysis completed successfully!")
         print(f"📊 Analyzed {result.categories_analyzed}/{result.total_categories} categories")
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")
