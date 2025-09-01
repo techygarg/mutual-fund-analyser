@@ -10,11 +10,7 @@ echo "🔍 Code quality checks..."
 
 # Run unit tests with fast exit on failure
 echo "⚡ Unit tests (fast mode)..."
-python -m pytest tests/unit/ \
-    --cov=src/mfa \
-    --cov-report=term-missing \
-    -x \
-    --tb=short
+.github/scripts/test-unit.sh
 
 echo "🎉 Quick check passed!"
 echo "✅ Code formatting: PASSED"
