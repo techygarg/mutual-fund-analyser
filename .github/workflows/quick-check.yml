@@ -22,6 +22,9 @@ jobs:
     timeout-minutes: 8
     
     steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
     - name: "🐍 Setup Python Environment"
       uses: ./.github/actions/setup-python
       with:

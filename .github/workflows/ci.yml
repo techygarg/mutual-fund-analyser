@@ -25,6 +25,9 @@ jobs:
     timeout-minutes: 5
     
     steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
     - name: "🐍 Setup Python Environment"
       uses: ./.github/actions/setup-python
       with:
@@ -41,6 +44,9 @@ jobs:
     timeout-minutes: 5
     
     steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
     - name: "🐍 Setup Python Environment"
       uses: ./.github/actions/setup-python
       with:
@@ -63,6 +69,9 @@ jobs:
     timeout-minutes: 10
     
     steps:
+    - name: "📥 Checkout code"
+      uses: actions/checkout@v4
+      
     - name: "🐍 Setup Python Environment with Playwright"
       uses: ./.github/actions/setup-python
       with:
