@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 from mfa.storage.json_store import JsonStore
 
@@ -92,7 +92,7 @@ class FundAnalyzer:
     """
 
     def __init__(self):
-        self._config = config
+        self._config = ConfigProvider.get_instance()
 
     def analyze(self, date: str | None = None, category: str | None = None) -> FundAnalysisResult:
         """

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 from mfa.scraping.core.playwright_scraper import PlaywrightSession
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
@@ -64,7 +64,7 @@ class Orchestrator:
     """
 
     def __init__(self):
-        self._config = config
+        self._config = ConfigProvider.get_instance()
         self._scraper: ZerodhaCoinScraper | None = None
 
     def run(self, category: str | None = None) -> OrchestrationResult:

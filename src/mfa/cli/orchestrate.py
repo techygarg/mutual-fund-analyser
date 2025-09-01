@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.config.settings import config
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.orchestrator import Orchestrator
 
@@ -18,6 +18,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    config = ConfigProvider.get_instance()
     config.ensure_directories()
     setup_logging("outputs")
 
