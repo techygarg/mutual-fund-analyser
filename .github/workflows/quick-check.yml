@@ -43,24 +43,5 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
         
-    - name: "🔍 Run code quality checks"
-      run: make check-ci
-      
-    - name: "⚡ Run unit tests"
-      run: |
-        python -m pytest tests/unit/ \
-          --cov=src/mfa \
-          --cov-report=term-missing \
-          -x \
-          --tb=short
-          
-    - name: "✅ Quick check summary"
-      if: success()
-      run: |
-        echo "🎉 Quick check passed!"
-        echo "✅ Code formatting: PASSED"
-        echo "✅ Linting: PASSED"
-        echo "✅ Type checking: PASSED"
-        echo "✅ Unit tests: PASSED"
-        echo ""
-        echo "💡 Push to main or create PR to run full test suite with integration tests."
+    - name: "⚡ Run quick checks (code quality + unit tests)"
+      run: .github/scripts/quick-check.sh

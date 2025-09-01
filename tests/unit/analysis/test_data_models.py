@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from mfa.analysis.analyzer import (
     AnalysisResult,
     CompanyAnalysis,

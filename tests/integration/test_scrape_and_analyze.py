@@ -6,16 +6,15 @@ This test runs the full scrape -> analyze pipeline with minimal test data.
 
 import json
 import shutil
-import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 from unittest.mock import patch
 
 import pytest
 import yaml
 
+from mfa.cli import analyze, orchestrate
 from mfa.config.settings import ConfigProvider
-from mfa.cli import orchestrate, analyze
 
 
 class TestScrapeAndAnalyze:
@@ -92,6 +91,9 @@ class TestScrapeAndAnalyze:
             # Verify test config is loaded correctly
             funds = config.get("funds", {})
             print(f"📁 Test workspace: {workspace_path}")
+            print(
+                f"🔧 Using test config with {len(funds.get('largeCap', []))} largeCap and {len(funds.get('midCap', []))} midCap funds"
+            )
 
             # Step 1: Run scraping - process all categories configured in test config
             print("\n🕷️ Running scraping...")

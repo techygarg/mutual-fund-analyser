@@ -46,7 +46,7 @@ jobs:
         pip install -e ".[dev]"
         
     - name: "🔍 Run all code quality checks"
-      run: make check-ci
+      run: .github/scripts/check.sh
 
   # Job 2: Unit Tests (Fast)
   unit-tests:
@@ -77,7 +77,7 @@ jobs:
         pip install -e ".[dev]"
         
     - name: "🧪 Run unit tests with coverage"
-      run: make test-unit-ci
+      run: .github/scripts/test-unit.sh
           
     - name: "📊 Upload coverage reports to Codecov"
       uses: codecov/codecov-action@v3
@@ -140,7 +140,7 @@ jobs:
       env:
         # Ensure headless mode for CI
         PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
-      run: make test-integration-ci
+      run: .github/scripts/test-integration.sh
           
     - name: "📋 Upload integration test results"
       uses: actions/upload-artifact@v3
@@ -201,7 +201,7 @@ jobs:
     - name: "🧪 Run complete test suite with coverage"
       env:
         PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
-      run: make test-ci
+      run: .github/scripts/test-all.sh
           
     - name: "📊 Upload full coverage report"
       uses: codecov/codecov-action@v3
