@@ -1,4 +1,4 @@
-# Test Configuration - Minimal setup for integration testing
+# Test Configuration - Analysis-Driven Architecture
 # =============================================================================
 
 # Directory paths (will be overridden in tests to use temp dirs)
@@ -12,24 +12,29 @@ scraping:
   timeout_seconds: 15         # Reduced timeout for faster tests
   delay_between_requests: 1.0 # Minimal delay for testing
 
-# Analysis preferences (minimal for testing)
-analysis:
-  max_companies_in_results: 20
-  max_sample_funds_per_company: 5
-  exclude_from_analysis:
-    - "TREPS"        # Treasury Repo
-    - "CASH"         # Cash holdings  
-    - "T-BILLS"      # Treasury Bills
-    - "REVERSE REPO" # Reverse Repo
-
 # Output formatting
 output:
   filename_prefix: "coin_"
   include_date_in_folder: true
 
-# Minimal fund URLs for testing (1 fund per category for speed)
-funds:
-  largeCap:
-    - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
-  midCap:
-    - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+# Analysis definitions - minimal setup for testing
+analyses:
+  holdings:
+    enabled: true
+    type: fund-holdings
+    data_requirements:
+      scraping_strategy: categories
+      categories:
+        largeCap:
+          - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+        midCap:
+          - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+    params:
+      max_holdings: 10                # Test with standard 10 holdings
+      max_companies_in_results: 20
+      max_sample_funds_per_company: 5
+      exclude_from_analysis:
+        - "TREPS"        # Treasury Repo
+        - "CASH"         # Cash holdings  
+        - "T-BILLS"      # Treasury Bills
+        - "REVERSE REPO" # Reverse Repo

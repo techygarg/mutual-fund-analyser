@@ -91,10 +91,10 @@ class PlaywrightScraper:
         )
         self._own = session is None
 
-    def scrape(self, url: str) -> dict[str, Any]:  # pragma: no cover - abstract by convention
+    def scrape(self, url: str, max_holdings: int = 10, storage_config: dict | None = None) -> dict[str, Any]:  # pragma: no cover - abstract by convention
         raise NotImplementedError
 
-    def scrape_many(self, urls: Iterable[str]) -> list[dict[str, Any]]:
+    def scrape_many(self, urls: Iterable[str], max_holdings: int = 10, storage_config: dict | None = None) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         opened = False
         if self._own:
@@ -103,7 +103,7 @@ class PlaywrightScraper:
         try:
             for url in urls:
                 try:
-                    results.append(self.scrape(url))
+                    results.append(self.scrape(url, max_holdings, storage_config))
                 except Exception as exc:  # noqa: BLE001
                     logger.exception("Failed to scrape {}: {}", url, exc)
         finally:
@@ -255,7 +255,7 @@ class PlaywrightScraper:
         return None
 
     def parse_holdings_from_table(
-        self, page: Page, tbl: ElementHandle | Locator | None
+        self, page: Page, tbl: ElementHandle | Locator | None, max_holdings: int = 10
     ) -> list[dict[str, Any]]:
         if not tbl:
             return []
@@ -277,7 +277,7 @@ class PlaywrightScraper:
         rank = 1
         # Skip header row if present
         start_index = 1 if len(rows) > 0 else 0
-        for r in rows[start_index:80]:
+        for r in rows[start_index:max_holdings + 10]:  # Small buffer for headers/invalid rows
             # Get cell locators/handles
             cells: list[Any] = []
             if hasattr(r, "locator"):
@@ -322,11 +322,11 @@ class PlaywrightScraper:
             if name and alloc:
                 res.append({"rank": rank, "company_name": name, "allocation_percentage": alloc})
                 rank += 1
-            if rank > 11:
-                break
+                if rank > max_holdings:
+                    break
         return res
 
-    def parse_holdings_from_any_table(self, page: Page) -> list[dict[str, Any]]:
+    def parse_holdings_from_any_table(self, page: Page, max_holdings: int = 10) -> list[dict[str, Any]]:
         # Look for the first few tables near the Top holdings section, then parse
         try:
             containers = [
@@ -352,7 +352,7 @@ class PlaywrightScraper:
                         except Exception:
                             pass
                         if cand:
-                            parsed = self.parse_holdings_from_table(page, cand)
+                            parsed = self.parse_holdings_from_table(page, cand, max_holdings)
                             if parsed:
                                 return parsed
         except Exception:
@@ -368,7 +368,7 @@ class PlaywrightScraper:
                 except Exception:
                     header_text = ""
                 if any(k in header_text for k in self.HOLDINGS_HEADER_KEYWORDS):
-                    parsed = self.parse_holdings_from_table(page, tbl)
+                    parsed = self.parse_holdings_from_table(page, tbl, max_holdings)
                     if parsed:
                         return parsed
         except Exception:
