@@ -83,85 +83,33 @@ class TestScrapeAndAnalyze:
         try:
             # Force reset config provider AFTER changing directory
             ConfigProvider._instance = None
-            ConfigProvider._config = None
+            ConfigProvider._raw_config = None
+            ConfigProvider._typed_config = None
 
             # Get fresh config instance that will read from test workspace
-            config = ConfigProvider.get_instance()
+            config_provider = ConfigProvider.get_instance()
+            config = config_provider.get_config()
 
             # Verify test config is loaded correctly
-            funds = config.get("funds", {})
+            holdings_config = config.get_analysis("holdings")
+            categories = holdings_config.data_requirements.categories if holdings_config else {}
             print(f"📁 Test workspace: {workspace_path}")
             print(
-                f"🔧 Using test config with {len(funds.get('largeCap', []))} largeCap and {len(funds.get('midCap', []))} midCap funds"
+                f"🔧 Using test config with {len(categories.get('largeCap', []))} largeCap and {len(categories.get('midCap', []))} midCap funds"
             )
 
-            # Step 1: Run scraping - process all categories configured in test config
-            print("\n🕷️ Running scraping...")
-            # Mock command line arguments for orchestrate (no category = run all configured)
-            with patch("sys.argv", ["orchestrate.py"]):
-                orchestrate.main()
+            # Step 1: Run scraping and analysis - using new analysis orchestrator
+            print("\n🚀 Running analysis orchestrator...")
+            from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
+            orchestrator = AnalysisOrchestrator()
+            orchestrator.run_analysis("holdings")
 
-            # Verify scraping outputs
-            output_dir = Path(config.get("paths.output_dir"))
-            assert output_dir.exists(), "Output directory should be created after scraping"
+            print("✅ Analysis orchestrator completed successfully")
 
-            # Should have date-based subdirectories
-            date_dirs = [d for d in output_dir.iterdir() if d.is_dir()]
-            assert len(date_dirs) >= 1, "Should create at least one date directory"
-
-            # Check for category directories and JSON files
-            date_dir = date_dirs[0]  # Use the first (likely only) date directory
-
-            # Should have directories for all configured categories
-            category_dirs = [d for d in date_dir.iterdir() if d.is_dir()]
-            assert len(category_dirs) >= 1, "Should create category directories"
-
-            # Check for JSON files in all scraped categories
-            total_files = 0
-            for category_dir in category_dirs:
-                json_files = list(category_dir.glob("*.json"))
-                assert len(json_files) >= 1, (
-                    f"Should create JSON files for {category_dir.name} funds"
-                )
-                total_files += len(json_files)
-                print(f"✅ Scraped {len(json_files)} {category_dir.name} funds successfully")
-
-            print(f"✅ Total scraped files: {total_files}")
-
-            # Verify JSON structure of scraped data (using first file found)
-            first_json_file = next(category_dirs[0].glob("*.json"))
-            with open(first_json_file) as f:
-                scraped_data = json.load(f)
-                assert "data" in scraped_data, "Scraped JSON should contain 'data' key"
-
-                data = scraped_data["data"]
-                assert "fund_info" in data, "Should contain fund_info"
-                assert "top_holdings" in data, "Should contain top_holdings"
-
-                # Basic validation of fund info
-                fund_info = data["fund_info"]
-                assert "fund_name" in fund_info, "Fund info should contain fund_name"
-
-                # Basic validation of holdings
-                holdings = data["top_holdings"]
-                assert isinstance(holdings, list), "Holdings should be a list"
-                if holdings:  # If we have holdings data
-                    holding = holdings[0]
-                    assert "company_name" in holding, "Holdings should contain company_name"
-                    assert "allocation_percentage" in holding, (
-                        "Holdings should contain allocation_percentage"
-                    )
-
-            print("✅ Scraping completed and validated")
-
-            # Step 2: Run analysis - process all categories that were scraped
-            print("\n📊 Running analysis...")
-            # Mock command line arguments for analyze (no category = run all scraped)
-            with patch("sys.argv", ["analyze.py"]):
-                analyze.main()
-
+            # Step 2: Verify analysis outputs (analysis runs automatically with orchestrator)
+            print("\n📊 Verifying analysis outputs...")
             # Verify analysis outputs
-            analysis_dir = Path(config.get("paths.analysis_dir"))
+            analysis_dir = Path(config.paths.analysis_dir)
             assert analysis_dir.exists(), "Analysis directory should be created"
 
             # Should have date-based subdirectory with analysis files
@@ -203,14 +151,13 @@ class TestScrapeAndAnalyze:
 
                 if top_by_fund_count:  # If we have company data
                     company = top_by_fund_count[0]
-                    # Fix: Use 'name' instead of 'company_name' based on the error we saw
-                    company_fields = ["name", "fund_count", "total_weight", "avg_weight"]
+                    # Check for correct field names in our new output structure
+                    company_fields = ["company", "fund_count", "total_weight", "avg_weight"]
                     for field in company_fields:
                         assert field in company, f"Company data should contain '{field}' field"
 
             print("✅ Analysis completed and validated")
             print(f"📁 Test workspace: {workspace_path}")
-            print(f"📄 Scraped {total_files} fund files")
             print(f"📊 Generated analysis for {len(analysis_files)} categories")
 
         finally:

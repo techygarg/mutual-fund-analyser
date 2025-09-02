@@ -2,30 +2,48 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.analysis.analyzer import FundAnalyzer
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
+from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Analyze fund holdings JSONs")
-    parser.add_argument("--date", help="YYYYMMDD date folder under outputs/extracted_json")
-    parser.add_argument("--category", help="Category to analyze (e.g., largeCap)")
+    parser = argparse.ArgumentParser(description="Run MFA analysis")
+    parser.add_argument("analysis_type", nargs="?", 
+                       help="Analysis type to run (e.g., 'holdings'). If not specified, runs all enabled analyses.")
+    parser.add_argument("--date", help="Date (YYYYMMDD) for analysis")
+    parser.add_argument("--list", action="store_true", help="List available analysis types")
+    parser.add_argument("--status", action="store_true", help="Show status of all analyses")
     return parser.parse_args()
 
 
 def main() -> None:
-    config = ConfigProvider.get_instance()
+    config_provider = ConfigProvider.get_instance()
+    config = config_provider.get_config()
     config.ensure_directories()
     setup_logging("outputs")
 
     args = _parse_args()
+    orchestrator = AnalysisOrchestrator()
+    
+    if args.list:
+        analyses = orchestrator.list_available_analyses()
+        print("Available analyses:")
+        for name in analyses:
+            print(f"  - {name}")
+        return
+    
+    if args.status:
+        status = orchestrator.get_analysis_status()
+        print("Analysis status:")
+        for name, info in status.items():
+            enabled_str = "enabled" if info["enabled"] else "disabled"
+            print(f"  {name} ({info['type']}) - {enabled_str} - {info['strategy']} strategy")
+        return
 
-    analyzer = FundAnalyzer()
     try:
-        result = analyzer.analyze(date=args.date, category=args.category)
-        print("\n🎉 Analysis completed successfully!")
-        print(f"📊 Analyzed {result.categories_analyzed}/{result.total_categories} categories")
+        orchestrator.run_analysis(args.analysis_type, args.date)
+        print("\n🎉 Analysis orchestration completed successfully!")
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")
         raise

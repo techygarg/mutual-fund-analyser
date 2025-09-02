@@ -212,3 +212,5 @@ outputs/
 
 # Test integration workspace
 tests/integration/test_workspace/
+
+.cursor*

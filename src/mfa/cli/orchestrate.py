@@ -4,34 +4,35 @@ import argparse
 
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
-from mfa.orchestration.orchestrator import Orchestrator
+from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Scrape funds by category from config")
+    parser = argparse.ArgumentParser(description="Run analysis orchestration")
     parser.add_argument(
-        "--category",
-        "-c",
-        help="Category key under 'funds' to process (e.g., largeCap). If omitted, process all.",
+        "--analysis",
+        "-a",
+        help="Analysis type to run (e.g., 'holdings'). If omitted, runs all enabled analyses.",
     )
+    parser.add_argument("--date", help="Date (YYYYMMDD) for analysis")
     return parser.parse_args()
 
 
 def main() -> None:
-    config = ConfigProvider.get_instance()
+    config_provider = ConfigProvider.get_instance()
+    config = config_provider.get_config()
     config.ensure_directories()
     setup_logging("outputs")
 
     args = _parse_args()
-    category_arg = (args.category or "").strip() if args else ""
+    analysis_type = (args.analysis or "").strip() if args else None
 
-    orchestrator = Orchestrator()
+    orchestrator = AnalysisOrchestrator()
     try:
-        result = orchestrator.run(category=category_arg if category_arg else None)
-        print("\n🎉 Orchestration completed successfully!")
-        print(f"📊 Processed {result.processed_count}/{result.total_funds} funds")
+        orchestrator.run_analysis(analysis_type, args.date)
+        print("\n🎉 Analysis orchestration completed successfully!")
     except Exception as e:
-        print(f"\n❌ Orchestration failed: {e}")
+        print(f"\n❌ Analysis orchestration failed: {e}")
         raise
 
 

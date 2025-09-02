@@ -65,13 +65,13 @@ def _extract_meta_fields(body_text: str) -> dict[str, Any]:
     }
 
 
-def _parse_top_holdings(page: Page, base: PlaywrightScraper) -> list[dict[str, Any]]:
+def _parse_top_holdings(page: Page, base: PlaywrightScraper, max_holdings: int = 10) -> list[dict[str, Any]]:
     tbl = base.find_holdings_table(page)
     if tbl:
-        res = base.parse_holdings_from_table(page, tbl)
+        res = base.parse_holdings_from_table(page, tbl, max_holdings)
         if res:
             return res
-    res = base.parse_holdings_from_any_table(page)
+    res = base.parse_holdings_from_any_table(page, max_holdings)
     if res:
         return res
     # Fallback: parse from text within the Top holdings section (non-table layouts)
@@ -127,7 +127,7 @@ def _parse_top_holdings(page: Page, base: PlaywrightScraper) -> list[dict[str, A
         seen.add(name.lower())
         items.append({"rank": rank, "company_name": name, "allocation_percentage": alloc})
         rank += 1
-        if rank > 11:
+        if rank > max_holdings:
             break
     return items
 
@@ -176,83 +176,180 @@ class ZerodhaCoinScraper(PlaywrightScraper):
         # Pass session through; base will create one if None and mark _own correctly
         super().__init__(session=session, headless=headless, nav_timeout_ms=nav_timeout_ms)
 
-    def scrape(self, url: str) -> dict[str, Any]:
+    def scrape(self, url: str, max_holdings: int = 10, storage_config: dict | None = None) -> dict[str, Any]:
+        """
+        Scrape fund data from a URL with configurable holdings limit and smart storage.
+        
+        Args:
+            url: Fund URL to scrape
+            max_holdings: Maximum number of holdings to extract
+            storage_config: Optional storage configuration containing:
+                - should_save: bool - Whether to save to disk
+                - base_dir: str - Base directory for storage
+                - category: str - Fund category for organization
+                - filename_prefix: str - Prefix for generated filenames
+                
+        Returns:
+            dict: Scraped fund data document
+        """
         logger.debug("🌐 Starting scrape for: {}", url)
-        opened = False
-        if self._own:
-            self.session.open()
-            opened = True
+        
+        session_opened = self._open_session_if_needed()
         try:
-            logger.debug("🗺️ Navigating to fund page...")
-            page = self.goto(url)
-            # Bring Top holdings into view and expand list
-            logger.debug("🔍 Looking for holdings section...")
-            try:
-                page.get_by_text(
-                    re.compile(r"top\s+holdings", re.I)
-                ).first.scroll_into_view_if_needed(timeout=2000)
-                logger.debug("✅ Found 'Top Holdings' section")
-            except Exception:
-                try:
-                    page.get_by_text(
-                        re.compile(r"holdings", re.I)
-                    ).first.scroll_into_view_if_needed(timeout=2000)
-                    logger.debug("✅ Found 'Holdings' section (alternative)")
-                except Exception:
-                    logger.debug("⚠️ Holdings section not found, continuing...")
-                    pass
-            logger.debug("🔄 Attempting to expand holdings view...")
-            self.click_holdings_tab(page)
-            self.click_show_all(page)
-            logger.debug("⏳ Waiting for holdings data to load...")
-            try:
-                # Wait for either table rows or visible percent cells
-                page.wait_for_selector("table tr", timeout=5000)
-                logger.debug("✅ Holdings table found")
-            except Exception:
-                try:
-                    page.wait_for_selector(r"text=/\d{1,2}(?:\.\d+)?%/", timeout=3500)
-                    logger.debug("✅ Holdings percentages found (non-table format)")
-                except Exception:
-                    logger.debug("⚠️ Holdings data not immediately visible, proceeding...")
-                    pass
-            logger.debug("📋 Extracting fund information...")
-            body_text = self.get_body_text(page)
-            fund_name = self.extract_heading(page)
-
-            if fund_name:
-                logger.debug("🏦 Fund name: {}", fund_name)
-            else:
-                logger.debug("⚠️ Fund name not found")
-
-            logger.debug("🔍 Extracting metadata (NAV, AUM, etc.)...")
-            meta = _extract_meta_fields(body_text)
-
-            logger.debug("📈 Parsing holdings data...")
-            holdings = _parse_top_holdings(page, self)
-            # Validate and report holdings extraction
-            if len(holdings) < 10:
-                logger.warning("⚠️  Low holdings count: {} (expected 10+)", len(holdings))
-                logger.warning("🏦 Fund: {}", fund_name or "Unknown")
-                logger.warning("🔗 URL: {}", url)
-                logger.info("💡 This might indicate incomplete data extraction")
-            else:
-                logger.debug("✅ Successfully extracted {} holdings", len(holdings))
-
-            # Log some key metadata if available
-            if meta.get("aum"):
-                logger.debug("💰 AUM: {}", meta["aum"])
-            if meta.get("expense_ratio"):
-                logger.debug("📊 Expense Ratio: {}", meta["expense_ratio"])
-
-            logger.debug("🗺️ Building final document...")
-            return _build_document(url, fund_name, meta, holdings)
+            page = self._navigate_to_fund_page(url)
+            self._prepare_holdings_section(page)
+            fund_name, meta, holdings = self._extract_fund_data(page, max_holdings)
+            self._log_extraction_results(fund_name, meta, holdings, max_holdings, url)
+            
+            document = self._build_and_optionally_save_document(url, fund_name, meta, holdings, storage_config)
+            return document
+            
         except Exception as e:
-            logger.error("❌ Scraping failed for: {}", url)
-            logger.error("🚨 Error details: {}", str(e))
-            logger.debug("🔍 Full traceback:", exc_info=True)
+            self._log_scraping_error(url, e)
             raise
         finally:
-            if opened:
-                logger.debug("🔒 Closing browser session")
-                self.session.close()
+            if session_opened:
+                self._close_session()
+
+    def _open_session_if_needed(self) -> bool:
+        """Open browser session if this scraper owns it. Returns True if opened."""
+        if self._own:
+            self.session.open()
+            return True
+        return False
+
+    def _navigate_to_fund_page(self, url: str) -> Page:
+        """Navigate to the fund page and return the page object."""
+        logger.debug("🗺️ Navigating to fund page...")
+        return self.goto(url)
+
+    def _prepare_holdings_section(self, page: Page) -> None:
+        """Locate, scroll to, and expand the holdings section."""
+        self._scroll_to_holdings_section(page)
+        self._expand_holdings_view(page)
+        self._wait_for_holdings_data(page)
+
+    def _scroll_to_holdings_section(self, page: Page) -> None:
+        """Scroll to the holdings section if found."""
+        logger.debug("🔍 Looking for holdings section...")
+        try:
+            page.get_by_text(
+                re.compile(r"top\s+holdings", re.I)
+            ).first.scroll_into_view_if_needed(timeout=2000)
+            logger.debug("✅ Found 'Top Holdings' section")
+        except Exception:
+            try:
+                page.get_by_text(
+                    re.compile(r"holdings", re.I)
+                ).first.scroll_into_view_if_needed(timeout=2000)
+                logger.debug("✅ Found 'Holdings' section (alternative)")
+            except Exception:
+                logger.debug("⚠️ Holdings section not found, continuing...")
+
+    def _expand_holdings_view(self, page: Page) -> None:
+        """Expand the holdings view by clicking relevant tabs and buttons."""
+        logger.debug("🔄 Attempting to expand holdings view...")
+        self.click_holdings_tab(page)
+        self.click_show_all(page)
+
+    def _wait_for_holdings_data(self, page: Page) -> None:
+        """Wait for holdings data to load on the page."""
+        logger.debug("⏳ Waiting for holdings data to load...")
+        try:
+            # Wait for either table rows or visible percent cells
+            page.wait_for_selector("table tr", timeout=5000)
+            logger.debug("✅ Holdings table found")
+        except Exception:
+            try:
+                page.wait_for_selector(r"text=/\d{1,2}(?:\.\d+)?%/", timeout=3500)
+                logger.debug("✅ Holdings percentages found (non-table format)")
+            except Exception:
+                logger.debug("⚠️ Holdings data not immediately visible, proceeding...")
+
+    def _extract_fund_data(self, page: Page, max_holdings: int) -> tuple[str | None, dict[str, Any], list[dict[str, Any]]]:
+        """Extract all fund data from the page. Returns (fund_name, metadata, holdings)."""
+        logger.debug("📋 Extracting fund information...")
+        
+        # Extract basic fund information
+        body_text = self.get_body_text(page)
+        fund_name = self.extract_heading(page)
+        
+        if fund_name:
+            logger.debug("🏦 Fund name: {}", fund_name)
+        else:
+            logger.debug("⚠️ Fund name not found")
+
+        # Extract metadata (NAV, AUM, etc.)
+        logger.debug("🔍 Extracting metadata (NAV, AUM, etc.)...")
+        meta = _extract_meta_fields(body_text)
+
+        # Extract holdings data
+        logger.debug("📈 Parsing holdings data...")
+        holdings = _parse_top_holdings(page, self, max_holdings)
+        
+        return fund_name, meta, holdings
+
+    def _log_extraction_results(self, fund_name: str | None, meta: dict[str, Any], 
+                              holdings: list[dict[str, Any]], max_holdings: int, url: str) -> None:
+        """Log the results of data extraction with validation."""
+        # Validate and report holdings extraction
+        expected_min = min(max_holdings, 5)  # Expect at least 5 holdings, but not more than requested
+        if len(holdings) < expected_min:
+            logger.warning("⚠️  Low holdings count: {} (expected {}+ for max_holdings={})", 
+                          len(holdings), expected_min, max_holdings)
+            logger.warning("🏦 Fund: {}", fund_name or "Unknown")
+            logger.warning("🔗 URL: {}", url)
+            logger.info("💡 This might indicate incomplete data extraction")
+        else:
+            logger.debug("✅ Successfully extracted {} holdings (max_holdings={})", 
+                        len(holdings), max_holdings)
+
+        # Log key metadata if available
+        if meta.get("aum"):
+            logger.debug("💰 AUM: {}", meta["aum"])
+        if meta.get("expense_ratio"):
+            logger.debug("📊 Expense Ratio: {}", meta["expense_ratio"])
+
+    def _build_and_optionally_save_document(
+        self, 
+        url: str, 
+        fund_name: str | None, 
+        meta: dict[str, Any], 
+        holdings: list[dict[str, Any]], 
+        storage_config: dict | None
+    ) -> dict[str, Any]:
+        """
+        Build the final document and optionally save using JSONStore.
+        
+        This method now delegates storage responsibilities to JSONStore,
+        following single responsibility principle.
+        """
+        logger.debug("🗺️ Building final document...")
+        document = _build_document(url, fund_name, meta, holdings)
+        
+        # Use JSONStore for smart storage if requested
+        if storage_config and storage_config.get("should_save", False):
+            from mfa.storage.json_store import JsonStore
+            
+            JsonStore.save_with_template(
+                data=document,
+                base_dir=storage_config["base_dir"],
+                category=storage_config["category"],
+                url=url,
+                filename_prefix=storage_config.get("filename_prefix", "coin_"),
+                path_template=storage_config.get("path_template"),
+                analysis_type=storage_config.get("analysis_type", "default")
+            )
+        
+        return document
+
+    def _log_scraping_error(self, url: str, error: Exception) -> None:
+        """Log scraping errors with context."""
+        logger.error("❌ Scraping failed for: {}", url)
+        logger.error("🚨 Error details: {}", str(error))
+        logger.debug("🔍 Full traceback:", exc_info=True)
+
+    def _close_session(self) -> None:
+        """Close the browser session."""
+        logger.debug("🔒 Closing browser session")
+        self.session.close()

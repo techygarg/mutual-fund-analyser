@@ -16,9 +16,9 @@ def _load_urls(urls_file: Path) -> list[str]:
 
 
 def _get_scraper() -> ZerodhaCoinScraper:
-    config = ConfigProvider.get_instance()
-    headless = str(config.get("scraping.playwright.headless", "true")).lower() == "true"
-    return ZerodhaCoinScraper(headless=headless)
+    config_provider = ConfigProvider.get_instance()
+    config = config_provider.get_config()
+    return ZerodhaCoinScraper(headless=config.scraping.headless)
 
 
 def _save_raw_json(doc: dict, filename: str, output_dir: Path) -> Path:
@@ -31,12 +31,15 @@ def _save_raw_json(doc: dict, filename: str, output_dir: Path) -> Path:
 
 
 def main() -> None:
-    config = ConfigProvider.get_instance()
+    config_provider = ConfigProvider.get_instance()
+    config = config_provider.get_config()
     config.ensure_directories()
     setup_logging("outputs")
 
-    urls_path = Path(str(config.get("paths.urls_file")))
-    output_dir = Path(str(config.get("paths.output_dir")))
+    # Note: urls_file is not in our config model yet, so need to add it
+    # For now, using a reasonable default
+    urls_path = Path("config/urls.txt")  # or could add to config model
+    output_dir = Path(config.paths.output_dir)
     urls = _load_urls(urls_path)
 
     logger.info("Loaded {} URLs from {}", len(urls), urls_path)
