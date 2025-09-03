@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status verify-build
+.PHONY: help init format lint check clean test test-unit test-integration analyze dashboard status verify-build
 
 # ==============================================================================
 # CONFIGURATION
@@ -37,9 +37,7 @@ help:
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
-	@echo "  make scrape      - 🕷️  Scrape fund data (categories from config)"
-	@echo "  make analyze     - 📊 Analyze collected JSONs"
-	@echo "  make pipeline    - ⚡ Scrape then analyze"
+	@echo "  make analyze     - 📊 Extract and analyze fund data (scrape + analyze)"
 	@echo "  make dashboard   - 🌐 Run dashboard server"
 	@echo ""
 	@echo "$(YELLOW)💡 Quick Start: make init && source venv/bin/activate$(NC)"
@@ -103,20 +101,11 @@ test-integration:
 # APPLICATION COMMANDS
 # ==============================================================================
 
-scrape:
-	@$(call check_venv)
-	@echo "$(BLUE)🕷️ Running fund scraper...$(NC)"
-	@python -m mfa.cli.orchestrate $(if $(CATEGORY),--category $(CATEGORY),)
-
 analyze:
 	@$(call check_venv)
-	@echo "$(BLUE)📊 Running analysis...$(NC)"
-	@python -m mfa.cli.analyze $(if $(DATE),--date $(DATE),) $(if $(CATEGORY),--category $(CATEGORY),)
-
-pipeline:
-	@$(call check_venv)
-	@echo "$(BLUE)⚡ Running pipeline...$(NC)"
-	@python -m mfa.cli.pipeline
+	@echo "$(BLUE)📊 Running Mutual Fund Analysis...$(NC)"
+	@echo "$(BLUE)   This will extract fund data and perform analysis$(NC)"
+	@mfa-analyze $(if $(DATE),--date $(DATE),) $(if $(CATEGORY),--category $(CATEGORY),) $(if $(VERBOSE),--verbose,) || (echo "$(RED)❌ Analysis failed. Check logs for details.$(NC)" && exit 1)
 
 dashboard:
 	@$(call check_venv)
