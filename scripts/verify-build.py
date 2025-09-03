@@ -58,7 +58,7 @@ class BuildVerifier:
             # Analysis system
             ("mfa.analysis.factories", "Factory patterns"),
             ("mfa.analysis.interfaces", "Interface definitions"),
-            ("mfa.analysis.analyzers.holdings_analyzer", "Holdings analyzer"),
+            ("mfa.analysis.analyzers.holdings", "Holdings analyzer package"),
 
             # Storage system
             ("mfa.storage.json_store", "JSON storage operations"),

@@ -1,14 +1,15 @@
 """
-Holdings aggregator with simplified interface.
+Holdings aggregator with dependency injection.
 
-This module aggregates holdings data across multiple funds.
+This module aggregates holdings data across multiple funds using proper dependency injection.
 """
 from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Dict, List
 
+from mfa.config.settings import ConfigProvider
 from .data_processor import ProcessedFund
 
 
@@ -31,23 +32,32 @@ class AggregatedData:
 
 class HoldingsAggregator:
     """Aggregates holdings data across multiple funds."""
-    
-    def __init__(self):
-        """Initialize aggregator - parameters passed per call."""
-        pass
-    
-    def aggregate_holdings(self, processed_funds: List[ProcessedFund], params: Any = None) -> AggregatedData:
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize aggregator with dependency injection.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        self.config_provider = config_provider
+
+    def aggregate_holdings(self, processed_funds: List[ProcessedFund]) -> AggregatedData:
         """
         Aggregate holdings data across all processed funds.
-        
+
+        Reads configuration directly from ConfigProvider instead of receiving params.
+
         Args:
             processed_funds: List of processed fund data
-            params: Analysis parameters (for max_sample_funds_per_company)
-        
+
         Returns:
             AggregatedData with company information
         """
-        max_samples = getattr(params, 'max_sample_funds_per_company', 5) if params else 5
+        # Read configuration directly
+        config = self.config_provider.get_config()
+        holdings_config = config.analyses["holdings"]
+        max_samples = holdings_config.params.max_sample_funds_per_company
         
         company_to_funds = defaultdict(set)
         company_total_weights = defaultdict(float)

@@ -7,7 +7,7 @@ from mfa.logging.logger import setup_logging
 from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
 # Import analyzers and coordinators to ensure they get registered
-from mfa.analysis.analyzers.holdings_analyzer import HoldingsAnalyzer
+from mfa.analysis.analyzers.holdings import HoldingsAnalyzer
 from mfa.analysis.scraping.category_coordinator import CategoryScrapingCoordinator
 from mfa.analysis.scraping.targeted_coordinator import TargetedScrapingCoordinator
 
