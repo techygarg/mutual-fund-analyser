@@ -1,6 +1,6 @@
 # MFA - Mutual Fund Analyser - Streamlined Makefile
 
-.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status
+.PHONY: help init format lint check clean test test-unit test-integration scrape analyze pipeline dashboard status verify-build
 
 # ==============================================================================
 # CONFIGURATION
@@ -33,6 +33,7 @@ help:
 	@echo "  make test        - 🧪 Run all tests (unit + integration)"
 	@echo "  make test-unit   - ⚡ Run unit tests only (fast)"
 	@echo "  make test-integration - 🏭 Run integration tests only"
+	@echo "  make verify-build - 🏗️ Verify build integrity"
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
@@ -139,6 +140,16 @@ status:
 	@echo "  Config: $$(test -f config/config.yaml && echo '$(GREEN)✅$(NC)' || echo '$(RED)❌$(NC)') config/config.yaml"
 	@echo "  Package: $$(python -c 'import mfa' 2>/dev/null && echo '$(GREEN)✅ Installed$(NC)' || echo '$(RED)❌ Not installed$(NC)')"
 	@echo "  Playwright: $$(playwright --version >/dev/null 2>&1 && echo '$(GREEN)✅ Available$(NC)' || echo '$(YELLOW)⚠️ Run: playwright install$(NC)')"
+
+# ==============================================================================
+# VERIFICATION & VALIDATION
+# ==============================================================================
+verify-build:
+	@echo "$(BLUE)🏗️ Verifying build integrity...$(NC)"
+	@python -c "import mfa; print(f'✅ Package version: {mfa.__version__ if hasattr(mfa, \"__version__\") else \"OK\"}')"
+	@python -m pip check 2>/dev/null || echo "$(YELLOW)⚠️  Some dependencies may have conflicts$(NC)"
+	@python scripts/verify-build.py
+	@echo "$(GREEN)✅ Build verification complete!$(NC)"
 
 # ==============================================================================
 # HELPER FUNCTIONS
