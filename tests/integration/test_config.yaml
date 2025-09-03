@@ -11,6 +11,7 @@ scraping:
   headless: true              # Always headless in tests
   timeout_seconds: 15         # Reduced timeout for faster tests
   delay_between_requests: 1.0 # Minimal delay for testing
+  save_extracted_json: false  # Disable JSON saving for faster tests
 
 # Output formatting
 output:

@@ -14,7 +14,7 @@ import pytest
 import yaml
 
 from mfa.cli import analyze, orchestrate
-from mfa.config.settings import ConfigProvider
+from mfa.config.settings import ConfigProvider, create_config_provider
 
 
 class TestScrapeAndAnalyze:
@@ -61,14 +61,9 @@ class TestScrapeAndAnalyze:
 
     @pytest.fixture
     def reset_config(self):
-        """Reset the config singleton between tests."""
-        # Clear the singleton instance
-        ConfigProvider._instance = None
-        ConfigProvider._config = None
+        """No longer needed with dependency injection pattern."""
+        # ConfigProvider is no longer a singleton, so no reset needed
         yield
-        # Clear again after test
-        ConfigProvider._instance = None
-        ConfigProvider._config = None
 
     def test_scrape_and_analyze_pipeline(self, test_workspace: tuple[Path, dict], reset_config):
         """Test the complete scrape -> analyze pipeline."""
@@ -81,13 +76,8 @@ class TestScrapeAndAnalyze:
         os.chdir(workspace_path)
 
         try:
-            # Force reset config provider AFTER changing directory
-            ConfigProvider._instance = None
-            ConfigProvider._raw_config = None
-            ConfigProvider._typed_config = None
-
-            # Get fresh config instance that will read from test workspace
-            config_provider = ConfigProvider.get_instance()
+            # Create config provider with dependency injection pattern
+            config_provider = create_config_provider(workspace_path / "config" / "config.yaml")
             config = config_provider.get_config()
 
             # Verify test config is loaded correctly
@@ -101,7 +91,7 @@ class TestScrapeAndAnalyze:
             # Step 1: Run scraping and analysis - using new analysis orchestrator
             print("\n🚀 Running analysis orchestrator...")
             from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
-            orchestrator = AnalysisOrchestrator()
+            orchestrator = AnalysisOrchestrator(config_provider)
             orchestrator.run_analysis("holdings")
 
             print("✅ Analysis orchestrator completed successfully")
@@ -128,31 +118,36 @@ class TestScrapeAndAnalyze:
             with open(analysis_files[0]) as f:
                 analysis_data = json.load(f)
 
-                # Check required analysis fields
+                # Check required analysis fields (updated for new structure)
                 required_fields = [
-                    "total_files",
-                    "total_funds",
-                    "unique_companies",
-                    "top_by_fund_count",
-                    "top_by_total_weight",
+                    "category",
+                    "summary",
+                    "funds",
+                    "companies"
                 ]
 
                 for field in required_fields:
                     assert field in analysis_data, f"Analysis should contain '{field}' field"
 
+                # Check summary fields
+                summary = analysis_data["summary"]
+                assert "total_funds" in summary, "Summary should contain total_funds"
+                assert "total_companies" in summary, "Summary should contain total_companies"
+                assert "companies_in_results" in summary, "Summary should contain companies_in_results"
+
                 # Basic validation of analysis values
-                assert analysis_data["total_files"] >= 1, "Should have processed at least 1 file"
-                assert analysis_data["total_funds"] >= 1, "Should have analyzed at least 1 fund"
-                assert analysis_data["unique_companies"] >= 0, "Should have counted companies"
+                assert summary["total_funds"] >= 1, "Should have analyzed at least 1 fund"
+                assert summary["total_companies"] >= 0, "Should have counted companies"
+                assert len(analysis_data["companies"]) >= 0, "Should have companies list"
 
-                # Validate structure of top companies
-                top_by_fund_count = analysis_data["top_by_fund_count"]
-                assert isinstance(top_by_fund_count, list), "top_by_fund_count should be a list"
+                # Validate structure of companies
+                companies = analysis_data["companies"]
+                assert isinstance(companies, list), "companies should be a list"
 
-                if top_by_fund_count:  # If we have company data
-                    company = top_by_fund_count[0]
+                if companies:  # If we have company data
+                    company = companies[0]
                     # Check for correct field names in our new output structure
-                    company_fields = ["company", "fund_count", "total_weight", "avg_weight"]
+                    company_fields = ["name", "fund_count", "total_weight", "average_weight", "sample_funds"]
                     for field in company_fields:
                         assert field in company, f"Company data should contain '{field}' field"
 
