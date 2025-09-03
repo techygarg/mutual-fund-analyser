@@ -1,35 +1,45 @@
 """
-Holdings output builder with simplified interface.
+Holdings output builder with dependency injection.
 
-This module builds structured output for holdings analysis results.
+This module builds structured output for holdings analysis results using proper dependency injection.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from mfa.config.settings import ConfigProvider
 from .aggregator import AggregatedData
 
 
 class HoldingsOutputBuilder:
     """Builds structured output for holdings analysis."""
-    
-    def __init__(self):
-        """Initialize builder - parameters passed per call."""
-        pass
-    
-    def build_category_output(self, category: str, aggregated_data: AggregatedData, params: Any) -> Dict[str, Any]:
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize builder with dependency injection.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        self.config_provider = config_provider
+
+    def build_category_output(self, category: str, aggregated_data: AggregatedData) -> Dict[str, Any]:
         """
         Build the complete output structure for a category.
-        
+
+        Reads configuration directly from ConfigProvider instead of receiving params.
+
         Args:
             category: Category name (e.g., "largeCap")
             aggregated_data: Aggregated holdings data
-            params: Analysis parameters
-            
+
         Returns:
             Complete analysis output dictionary
         """
-        max_companies = getattr(params, 'max_companies_in_results', 100) if params else 100
+        # Read configuration directly
+        config = self.config_provider.get_config()
+        holdings_config = config.analyses["holdings"]
+        max_companies = holdings_config.params.max_companies_in_results
         
         # Build fund references from aggregated data
         funds = [

@@ -15,11 +15,11 @@ from mfa.logging.logger import logger
 from mfa.storage.json_store import JsonStore
 from mfa.storage.path_generator import PathGenerator
 
-from ..factories import register_analyzer
-from ..interfaces import AnalysisResult, BaseAnalyzer, DataRequirement, ScrapingStrategy
-from .holdings.aggregator import HoldingsAggregator
-from .holdings.data_processor import HoldingsDataProcessor
-from .holdings.output_builder import HoldingsOutputBuilder
+from ...factories import register_analyzer
+from ...interfaces import AnalysisResult, BaseAnalyzer, DataRequirement, ScrapingStrategy
+from .aggregator import HoldingsAggregator
+from .data_processor import HoldingsDataProcessor
+from .output_builder import HoldingsOutputBuilder
 
 
 @register_analyzer("fund-holdings")
@@ -42,10 +42,10 @@ class HoldingsAnalyzer(BaseAnalyzer):
         self.config_provider = config_provider
         self.path_generator = PathGenerator(config_provider)
 
-        # Initialize components (they'll get params per call)
-        self.data_processor = HoldingsDataProcessor()
-        self.aggregator = HoldingsAggregator()
-        self.output_builder = HoldingsOutputBuilder()
+        # Initialize components with dependency injection
+        self.data_processor = HoldingsDataProcessor(config_provider)
+        self.aggregator = HoldingsAggregator(config_provider)
+        self.output_builder = HoldingsOutputBuilder(config_provider)
     
     def get_data_requirements(self) -> DataRequirement:
         """Define data requirements by reading config directly."""
@@ -117,16 +117,10 @@ class HoldingsAnalyzer(BaseAnalyzer):
                 logger.warning(f"No valid data files found for category {category}")
                 continue
             
-            # Process using existing components (pass config params)
-            processed_funds = self.data_processor.process_fund_jsons(
-                fund_data_list, holdings_config.params
-            )
-            aggregated_data = self.aggregator.aggregate_holdings(
-                processed_funds, holdings_config.params
-            )
-            category_output = self.output_builder.build_category_output(
-                category, aggregated_data, holdings_config.params
-            )
+            # Process using components with dependency injection (no params needed)
+            processed_funds = self.data_processor.process_fund_jsons(fund_data_list)
+            aggregated_data = self.aggregator.aggregate_holdings(processed_funds)
+            category_output = self.output_builder.build_category_output(category, aggregated_data)
             
             # Save analysis result
             output_path = self._save_category_result(category, category_output, date)

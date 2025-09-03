@@ -1,8 +1,8 @@
 """
-Holdings data processor with direct config access.
+Holdings data processor with dependency injection.
 
 This module handles processing raw fund JSON data into clean,
-structured holdings data for analysis.
+structured holdings data for analysis using proper dependency injection.
 """
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List
 
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 
 
@@ -31,23 +32,32 @@ class ProcessedHolding:
 
 class HoldingsDataProcessor:
     """Processes raw fund JSON data into structured holdings."""
-    
-    def __init__(self):
-        """Initialize processor - will read config as needed per call."""
-        pass
-    
-    def process_fund_jsons(self, fund_jsons: List[Dict], params: Any) -> List[ProcessedFund]:
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize processor with dependency injection.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        self.config_provider = config_provider
+
+    def process_fund_jsons(self, fund_jsons: List[Dict[str, Any]]) -> List[ProcessedFund]:
         """
         Process a list of fund JSON objects into structured data.
-        
+
+        Reads configuration directly from ConfigProvider instead of receiving params.
+
         Args:
             fund_jsons: List of fund data dictionaries
-            params: Analysis parameters containing exclusions
-            
+
         Returns:
             List of ProcessedFund objects
         """
-        excluded_holdings = set(params.exclude_from_analysis or [])
+        # Read configuration directly
+        config = self.config_provider.get_config()
+        holdings_config = config.analyses["holdings"]
+        excluded_holdings = set(holdings_config.params.exclude_from_analysis or [])
         processed_funds = []
         
         for fund_json in fund_jsons:
