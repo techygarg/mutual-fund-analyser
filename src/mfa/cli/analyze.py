@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.config.settings import ConfigProvider
+from mfa.config.settings import ConfigProvider, create_config_provider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
@@ -24,16 +24,19 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> None:
     setup_logging()
-    
+
     args = _parse_args()
-    
+
+    # Create configuration provider using dependency injection
+    config_provider = create_config_provider()
+
     # Ensure directories exist
-    config_provider = ConfigProvider.get_instance()
     config = config_provider.get_config()
     config.ensure_directories()
-    
-    orchestrator = AnalysisOrchestrator()
-    
+
+    # Create orchestrator with injected config provider
+    orchestrator = AnalysisOrchestrator(config_provider)
+
     if args.list:
         analyses = orchestrator.list_available_analyses()
         print("Available analyses:")

@@ -12,19 +12,25 @@ from typing import Any, Dict, Optional
 from mfa.analysis.factories import AnalyzerFactory, ScrapingCoordinatorFactory
 from mfa.config.models import AnalysisConfig
 from mfa.config.settings import ConfigProvider
+from mfa.core.exceptions import OrchestrationError, create_analysis_error
 from mfa.logging.logger import logger
 
 
 class AnalysisOrchestrator:
     """
-    Orchestrates analysis workflows with direct config access.
-    
-    Focuses on workflow orchestration only, letting components
-    read their own configuration directly.
+    Orchestrates analysis workflows with dependency-injected configuration.
+
+    Uses dependency injection for better testability and flexibility.
     """
-    
-    def __init__(self):
-        self.config_provider = ConfigProvider.get_instance()
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize orchestrator with injected configuration provider.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        self.config_provider = config_provider
     
     def run_analysis(self, analysis_type: Optional[str] = None, date: Optional[str] = None) -> None:
         """
@@ -43,7 +49,7 @@ class AnalysisOrchestrator:
             if analysis_type in enabled_analyses:
                 analyses_to_run = {analysis_type: enabled_analyses[analysis_type]}
             else:
-                raise ValueError(f"Analysis '{analysis_type}' not found or not enabled")
+                raise OrchestrationError(f"Analysis '{analysis_type}' not found or not enabled", {"analysis_type": analysis_type})
         else:
             # Run all enabled analyses
             analyses_to_run = enabled_analyses
@@ -70,8 +76,8 @@ class AnalysisOrchestrator:
         try:
             logger.info(f"\n📊 Starting analysis: {analysis_id}")
             
-            # 1. Create analyzer (no config needed - reads directly)
-            analyzer = AnalyzerFactory.create_analyzer(analysis_config.type)
+            # 1. Create analyzer with injected config provider
+            analyzer = AnalyzerFactory.create_analyzer(analysis_config.type, self.config_provider)
             
             # 2. Get data requirements (analyzer reads config directly)
             requirements = analyzer.get_data_requirements()
@@ -91,7 +97,11 @@ class AnalysisOrchestrator:
         except Exception as e:
             logger.error(f"❌ Analysis '{analysis_id}' failed: {e}")
             logger.debug("Full traceback:", exc_info=True)
-            raise
+            if isinstance(e, (OrchestrationError, create_analysis_error("", analysis_type=analysis_id).error_class)):
+                raise  # Re-raise our custom exceptions
+            else:
+                # Wrap unexpected exceptions
+                raise OrchestrationError(f"Unexpected error during analysis '{analysis_id}': {e}", {"analysis_type": analysis_id}) from e
     
     def _scrape_and_save_data(self, requirements, date: Optional[str]) -> Dict[str, Any]:
         """
@@ -101,7 +111,7 @@ class AnalysisOrchestrator:
         """
         try:
             coordinator = ScrapingCoordinatorFactory.create_coordinator(
-                requirements.strategy.value
+                requirements.strategy.value, self.config_provider
             )
             
             # Coordinator saves files and returns file path info + metadata
@@ -109,7 +119,11 @@ class AnalysisOrchestrator:
             
         except Exception as e:
             logger.error(f"❌ Scraping failed: {e}")
-            raise
+            if isinstance(e, OrchestrationError):
+                raise  # Re-raise our custom exceptions
+            else:
+                # Wrap unexpected exceptions
+                raise OrchestrationError(f"Unexpected error during scraping: {e}") from e
     
     def _get_current_date(self) -> str:
         """Get current date string."""
