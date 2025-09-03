@@ -16,9 +16,9 @@ def _parse_args() -> argparse.Namespace:
         description="Mutual Fund Analyzer - Extract and analyze fund holdings", prog="mfa-analyze"
     )
     parser.add_argument(
-        "analysis_type", 
-        nargs="?", 
-        help="Analysis type to run (e.g., 'holdings'). Required unless using --list or --status."
+        "analysis_type",
+        nargs="?",
+        help="Analysis type to run (e.g., 'holdings'). Required unless using --list or --status.",
     )
     parser.add_argument(
         "--category", "-c", help="Fund category to analyze (largeCap, midCap, smallCap)"
@@ -89,6 +89,7 @@ def main() -> None:
         print("❌ Error: analysis_type is required when not using --list or --status")
         print("💡 Use 'mfa-analyze --help' for usage information")
         import sys
+
         sys.exit(1)
 
     # Main analysis execution
