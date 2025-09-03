@@ -63,7 +63,7 @@ init:
 format:
 	@$(call check_venv)
 	@echo "$(BLUE)✨ Formatting code...$(NC)"
-	@ruff format src
+	@ruff format src tests
 	@echo "$(GREEN)✅ Code formatted$(NC)"
 
 lint:
@@ -73,8 +73,7 @@ lint:
 	@mypy src
 	@echo "$(GREEN)✅ Linting complete$(NC)"
 
-check: format lint
-	@echo "$(GREEN)✅ All checks passed!$(NC)"
+
 
 clean:
 	@echo "$(BLUE)🧹 Cleaning build artifacts...$(NC)"
@@ -150,6 +149,9 @@ verify-build:
 	@python -m pip check 2>/dev/null || echo "$(YELLOW)⚠️  Some dependencies may have conflicts$(NC)"
 	@python scripts/verify-build.py
 	@echo "$(GREEN)✅ Build verification complete!$(NC)"
+
+check: verify-build format lint test-unit
+	@echo "$(GREEN)✅ All checks passed!$(NC)"
 
 # ==============================================================================
 # HELPER FUNCTIONS

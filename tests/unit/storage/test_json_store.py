@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mfa.storage.json_store import JsonStore
 from mfa.core.exceptions import StorageError
+from mfa.storage.json_store import JsonStore
 
 
 class TestJsonStore:

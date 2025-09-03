@@ -2,20 +2,22 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.config.settings import ConfigProvider, create_config_provider
+# Import analyzers and coordinators to ensure they get registered
+import mfa.analysis.analyzers.holdings  # noqa: F401 - Registers holdings analyzer
+import mfa.analysis.scraping.category_coordinator  # noqa: F401 - Registers category coordinator
+import mfa.analysis.scraping.targeted_coordinator  # noqa: F401 - Registers targeted coordinator
+from mfa.config.settings import create_config_provider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
-
-# Import analyzers and coordinators to ensure they get registered
-from mfa.analysis.analyzers.holdings import HoldingsAnalyzer
-from mfa.analysis.scraping.category_coordinator import CategoryScrapingCoordinator
-from mfa.analysis.scraping.targeted_coordinator import TargetedScrapingCoordinator
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run MFA analysis")
-    parser.add_argument("analysis_type", nargs="?", 
-                       help="Analysis type to run (e.g., 'holdings'). If not specified, runs all enabled analyses.")
+    parser.add_argument(
+        "analysis_type",
+        nargs="?",
+        help="Analysis type to run (e.g., 'holdings'). If not specified, runs all enabled analyses.",
+    )
     parser.add_argument("--date", help="Date (YYYYMMDD) for analysis")
     parser.add_argument("--list", action="store_true", help="List available analysis types")
     parser.add_argument("--status", action="store_true", help="Show analysis status")
@@ -40,6 +42,7 @@ def main() -> None:
     except Exception as e:
         print(f"\n❌ Failed to initialize application: {e}")
         import sys
+
         sys.exit(1)
 
     if args.list:
@@ -48,7 +51,7 @@ def main() -> None:
         for name in analyses:
             print(f"  - {name}")
         return
-    
+
     if args.status:
         status = orchestrator.get_analysis_status()
         print("Analysis status:")

@@ -1,18 +1,18 @@
 """Unit tests for individual holdings analysis components with dependency injection."""
 
+from typing import Any
 from unittest.mock import Mock
-from typing import Any, Dict
 
 import pytest
 
 from mfa.analysis.analyzers.holdings import (
-    HoldingsDataProcessor,
+    AggregatedData,
+    CompanyData,
     HoldingsAggregator,
+    HoldingsDataProcessor,
     HoldingsOutputBuilder,
     ProcessedFund,
     ProcessedHolding,
-    AggregatedData,
-    CompanyData
 )
 from mfa.config.settings import ConfigProvider
 
@@ -31,7 +31,7 @@ class TestHoldingsDataProcessor:
                 params=Mock(
                     exclude_from_analysis=["CASH", "TREPS", "T-BILLS"],
                     max_sample_funds_per_company=3,
-                    max_companies_in_results=5
+                    max_companies_in_results=5,
                 )
             )
         }
@@ -45,20 +45,29 @@ class TestHoldingsDataProcessor:
         return config_provider
 
     @pytest.fixture
-    def sample_fund_json(self) -> Dict[str, Any]:
+    def sample_fund_json(self) -> dict[str, Any]:
         """Sample fund JSON data for testing."""
         return {
             "data": {
-                "fund_info": {
-                    "fund_name": "Test Fund",
-                    "aum": "₹1000 Cr"
-                },
+                "fund_info": {"fund_name": "Test Fund", "aum": "₹1000 Cr"},
                 "top_holdings": [
-                    {"rank": 1, "company_name": "Reliance Industries", "allocation_percentage": "8.5%"},
+                    {
+                        "rank": 1,
+                        "company_name": "Reliance Industries",
+                        "allocation_percentage": "8.5%",
+                    },
                     {"rank": 2, "company_name": "TCS Ltd", "allocation_percentage": "6.2%"},
-                    {"rank": 3, "company_name": "CASH", "allocation_percentage": "2.1%"},  # Should be excluded
-                    {"rank": 4, "company_name": "TREPS", "allocation_percentage": "1.5%"}  # Should be excluded
-                ]
+                    {
+                        "rank": 3,
+                        "company_name": "CASH",
+                        "allocation_percentage": "2.1%",
+                    },  # Should be excluded
+                    {
+                        "rank": 4,
+                        "company_name": "TREPS",
+                        "allocation_percentage": "1.5%",
+                    },  # Should be excluded
+                ],
             }
         }
 
@@ -68,7 +77,9 @@ class TestHoldingsDataProcessor:
 
         assert processor.config_provider is mock_config_provider
 
-    def test_process_fund_jsons_excludes_configured_holdings(self, mock_config_provider: Mock, sample_fund_json: Dict[str, Any]):
+    def test_process_fund_jsons_excludes_configured_holdings(
+        self, mock_config_provider: Mock, sample_fund_json: dict[str, Any]
+    ):
         """Test processing excludes holdings based on configuration."""
         processor = HoldingsDataProcessor(mock_config_provider)
 
@@ -118,13 +129,7 @@ class TestHoldingsAggregator:
         config_provider = Mock(spec=ConfigProvider)
 
         mock_config = Mock()
-        mock_config.analyses = {
-            "holdings": Mock(
-                params=Mock(
-                    max_sample_funds_per_company=3
-                )
-            )
-        }
+        mock_config.analyses = {"holdings": Mock(params=Mock(max_sample_funds_per_company=3))}
 
         config_provider.get_config.return_value = mock_config
         return config_provider
@@ -139,7 +144,7 @@ class TestHoldingsAggregator:
                 holdings=[
                     ProcessedHolding("Company X", 5.0, 1),
                     ProcessedHolding("Company Y", 3.0, 2),
-                ]
+                ],
             ),
             ProcessedFund(
                 name="Fund B",
@@ -147,8 +152,8 @@ class TestHoldingsAggregator:
                 holdings=[
                     ProcessedHolding("Company X", 4.0, 1),
                     ProcessedHolding("Company Z", 6.0, 2),
-                ]
-            )
+                ],
+            ),
         ]
 
     def test_initialization_with_di(self, mock_config_provider: Mock):
@@ -157,7 +162,9 @@ class TestHoldingsAggregator:
 
         assert aggregator.config_provider is mock_config_provider
 
-    def test_aggregate_holdings_combines_data_correctly(self, mock_config_provider: Mock, sample_processed_funds: list):
+    def test_aggregate_holdings_combines_data_correctly(
+        self, mock_config_provider: Mock, sample_processed_funds: list
+    ):
         """Test aggregation combines holdings data across funds."""
         aggregator = HoldingsAggregator(mock_config_provider)
 
@@ -221,13 +228,7 @@ class TestHoldingsOutputBuilder:
         config_provider = Mock(spec=ConfigProvider)
 
         mock_config = Mock()
-        mock_config.analyses = {
-            "holdings": Mock(
-                params=Mock(
-                    max_companies_in_results=5
-                )
-            )
-        }
+        mock_config.analyses = {"holdings": Mock(params=Mock(max_companies_in_results=5))}
 
         config_provider.get_config.return_value = mock_config
         return config_provider
@@ -255,7 +256,9 @@ class TestHoldingsOutputBuilder:
 
         assert builder.config_provider is mock_config_provider
 
-    def test_build_category_output_structures_data_correctly(self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData):
+    def test_build_category_output_structures_data_correctly(
+        self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData
+    ):
         """Test output building creates correct data structure."""
         builder = HoldingsOutputBuilder(mock_config_provider)
 
@@ -277,7 +280,9 @@ class TestHoldingsOutputBuilder:
         assert result["companies"][0]["name"] == "Company A"  # Most funds (3)
         assert result["companies"][1]["name"] == "Company B"  # Second most (2)
 
-    def test_build_category_output_respects_config_limits(self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData):
+    def test_build_category_output_respects_config_limits(
+        self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData
+    ):
         """Test output building respects configuration limits."""
         # Configure small limit
         mock_config = mock_config_provider.get_config.return_value
@@ -290,7 +295,9 @@ class TestHoldingsOutputBuilder:
         # Should limit number of companies
         assert len(result["companies"]) <= 2
 
-    def test_build_category_output_includes_summary(self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData):
+    def test_build_category_output_includes_summary(
+        self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData
+    ):
         """Test output includes proper summary information."""
         builder = HoldingsOutputBuilder(mock_config_provider)
 

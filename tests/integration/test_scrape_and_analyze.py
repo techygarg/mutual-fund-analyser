@@ -8,13 +8,11 @@ import json
 import shutil
 from collections.abc import Generator
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import yaml
 
-from mfa.cli import analyze, orchestrate
-from mfa.config.settings import ConfigProvider, create_config_provider
+from mfa.config.settings import create_config_provider
 
 
 class TestScrapeAndAnalyze:
@@ -91,6 +89,7 @@ class TestScrapeAndAnalyze:
             # Step 1: Run scraping and analysis - using new analysis orchestrator
             print("\n🚀 Running analysis orchestrator...")
             from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
+
             orchestrator = AnalysisOrchestrator(config_provider)
             orchestrator.run_analysis("holdings")
 
@@ -119,12 +118,7 @@ class TestScrapeAndAnalyze:
                 analysis_data = json.load(f)
 
                 # Check required analysis fields (updated for new structure)
-                required_fields = [
-                    "category",
-                    "summary",
-                    "funds",
-                    "companies"
-                ]
+                required_fields = ["category", "summary", "funds", "companies"]
 
                 for field in required_fields:
                     assert field in analysis_data, f"Analysis should contain '{field}' field"
@@ -133,7 +127,9 @@ class TestScrapeAndAnalyze:
                 summary = analysis_data["summary"]
                 assert "total_funds" in summary, "Summary should contain total_funds"
                 assert "total_companies" in summary, "Summary should contain total_companies"
-                assert "companies_in_results" in summary, "Summary should contain companies_in_results"
+                assert "companies_in_results" in summary, (
+                    "Summary should contain companies_in_results"
+                )
 
                 # Basic validation of analysis values
                 assert summary["total_funds"] >= 1, "Should have analyzed at least 1 fund"
@@ -147,7 +143,13 @@ class TestScrapeAndAnalyze:
                 if companies:  # If we have company data
                     company = companies[0]
                     # Check for correct field names in our new output structure
-                    company_fields = ["name", "fund_count", "total_weight", "average_weight", "sample_funds"]
+                    company_fields = [
+                        "name",
+                        "fund_count",
+                        "total_weight",
+                        "average_weight",
+                        "sample_funds",
+                    ]
                     for field in company_fields:
                         assert field in company, f"Company data should contain '{field}' field"
 

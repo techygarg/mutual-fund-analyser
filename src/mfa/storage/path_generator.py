@@ -5,12 +5,12 @@ This service handles all path generation logic, extracting it from JSONStore
 to maintain single responsibility principle. It supports both smart defaults
 and custom path templates for different analysis types.
 """
+
 from __future__ import annotations
 
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from mfa.config.settings import ConfigProvider
 from mfa.core.exceptions import PathGenerationError
@@ -37,8 +37,8 @@ class PathGenerator:
         self,
         url: str,
         category: str = "",
-        analysis_config: Optional[dict] = None,
-        date_str: Optional[str] = None
+        analysis_config: dict | None = None,
+        date_str: str | None = None,
     ) -> Path:
         """
         Generate path for scraped data files.
@@ -66,12 +66,16 @@ class PathGenerator:
                 base_dir,
                 date_str,
                 analysis_config.get("type", "").split("-")[-1],  # Extract analysis type
-                category
+                category,
             )
         else:
             # Smart defaults based on analysis type and category
-            analysis_type = analysis_config.get("type", "").split("-")[-1] if analysis_config else "default"
-            directory_path = self._generate_smart_default_path(base_dir, date_str, analysis_type, category)
+            analysis_type = (
+                analysis_config.get("type", "").split("-")[-1] if analysis_config else "default"
+            )
+            directory_path = self._generate_smart_default_path(
+                base_dir, date_str, analysis_type, category
+            )
 
         # Generate filename from URL
         filename = self._generate_filename_from_url(url)
@@ -79,10 +83,7 @@ class PathGenerator:
         return Path(directory_path) / filename
 
     def generate_analysis_output_path(
-        self,
-        category: str,
-        analysis_config: Optional[dict] = None,
-        date_str: Optional[str] = None
+        self, category: str, analysis_config: dict | None = None, date_str: str | None = None
     ) -> Path:
         """
         Generate path for analysis output files.
@@ -109,7 +110,7 @@ class PathGenerator:
                 base_dir,
                 date_str,
                 analysis_config.get("type", "").split("-")[-1],
-                category
+                category,
             )
         else:
             # Smart defaults for analysis outputs
@@ -118,12 +119,7 @@ class PathGenerator:
         return Path(directory_path) / f"{category}.json"
 
     def _resolve_path_template(
-        self,
-        template: str,
-        base_dir: str,
-        date_str: str,
-        analysis_type: str,
-        category: str
+        self, template: str, base_dir: str, date_str: str, analysis_type: str, category: str
     ) -> str:
         """
         Resolve a path template with variable substitution.
@@ -154,17 +150,15 @@ class PathGenerator:
         try:
             resolved_path = template.format(**template_vars)
             # Clean up path separators and remove trailing slashes
-            resolved_path = re.sub(r'/+', '/', resolved_path)
-            return resolved_path.rstrip('/')
+            resolved_path = re.sub(r"/+", "/", resolved_path)
+            return resolved_path.rstrip("/")
         except KeyError as e:
-            raise PathGenerationError(f"Unknown template variable in path template '{template}': {e}")
+            raise PathGenerationError(
+                f"Unknown template variable in path template '{template}': {e}"
+            ) from e
 
     def _generate_smart_default_path(
-        self,
-        base_dir: str,
-        date_str: str,
-        analysis_type: str,
-        category: str
+        self, base_dir: str, date_str: str, analysis_type: str, category: str
     ) -> str:
         """
         Generate smart default path based on analysis type and category.
@@ -196,7 +190,7 @@ class PathGenerator:
             Safe filename for the scraped data
         """
         # Extract the last part of URL which contains the fund identifier
-        url_parts = url.strip('/').split('/')
+        url_parts = url.strip("/").split("/")
 
         if len(url_parts) >= 2:
             # Get the fund code and name parts
@@ -210,7 +204,9 @@ class PathGenerator:
                 fund_identifier = fund_name or fund_code
         else:
             # Fallback: sanitize the entire URL
-            fund_identifier = re.sub(r'[^a-zA-Z0-9_-]', '_', url.split('/')[-1] if '/' in url else url)
+            fund_identifier = re.sub(
+                r"[^a-zA-Z0-9_-]", "_", url.split("/")[-1] if "/" in url else url
+            )
 
         # Get filename prefix from config
         config = self.config_provider.get_config()

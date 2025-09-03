@@ -4,7 +4,7 @@ from pathlib import Path
 
 import orjson
 
-from mfa.config.settings import ConfigProvider
+from mfa.config.settings import ConfigProvider, create_config_provider
 from mfa.logging.logger import logger, setup_logging
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.utils.paths import ensure_parent
@@ -15,8 +15,7 @@ def _load_urls(urls_file: Path) -> list[str]:
         return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 
-def _get_scraper() -> ZerodhaCoinScraper:
-    config_provider = ConfigProvider.get_instance()
+def _get_scraper(config_provider: ConfigProvider) -> ZerodhaCoinScraper:
     config = config_provider.get_config()
     return ZerodhaCoinScraper(headless=config.scraping.headless)
 
@@ -31,7 +30,7 @@ def _save_raw_json(doc: dict, filename: str, output_dir: Path) -> Path:
 
 
 def main() -> None:
-    config_provider = ConfigProvider.get_instance()
+    config_provider = create_config_provider()
     config = config_provider.get_config()
     config.ensure_directories()
     setup_logging("outputs")
@@ -43,7 +42,7 @@ def main() -> None:
     urls = _load_urls(urls_path)
 
     logger.info("Loaded {} URLs from {}", len(urls), urls_path)
-    scraper = _get_scraper()
+    scraper = _get_scraper(config_provider)
     for url in urls:
         if "coin.zerodha.com/mf/fund/" in url:
             doc = scraper.scrape(url)

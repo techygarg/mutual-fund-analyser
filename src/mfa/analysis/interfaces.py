@@ -4,17 +4,21 @@ Core interfaces for the analysis framework.
 This module defines the contracts that all analyzers and scraping coordinators
 must implement, enabling a clean factory pattern architecture.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from mfa.config.settings import ConfigProvider
 
 
 class ScrapingStrategy(Enum):
     """Supported scraping strategies."""
+
     CATEGORIES = "categories"
     TARGETED_FUNDS = "targeted_funds"
 
@@ -22,18 +26,20 @@ class ScrapingStrategy(Enum):
 @dataclass
 class DataRequirement:
     """Defines what data an analyzer needs to be scraped."""
+
     strategy: ScrapingStrategy
-    urls: List[str]
-    metadata: Dict[str, Any]
+    urls: list[str]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class AnalysisResult:
     """Result of running an analysis."""
+
     analysis_type: str
     date: str
-    output_paths: List[Path]
-    summary: Dict[str, Any]
+    output_paths: list[Path]
+    summary: dict[str, Any]
 
 
 class IAnalyzer(ABC):
@@ -45,7 +51,7 @@ class IAnalyzer(ABC):
         pass
 
     @abstractmethod
-    def analyze(self, data_source: Dict[str, Any], date: str) -> AnalysisResult:
+    def analyze(self, data_source: dict[str, Any], date: str) -> AnalysisResult:
         """
         Perform the analysis on the provided data source.
 
@@ -78,13 +84,15 @@ class BaseAnalyzer(IAnalyzer):
     allowing concrete analyzers to focus on their specific analysis logic.
     """
 
-    def __init__(self, analysis_type: str):
+    def __init__(self, config_provider: ConfigProvider, analysis_type: str):
         """
         Initialize base analyzer.
 
         Args:
+            config_provider: Configuration provider instance
             analysis_type: String identifier for this analyzer type
         """
+        self.config_provider = config_provider
         self._analysis_type = analysis_type
 
     @property
@@ -92,7 +100,7 @@ class BaseAnalyzer(IAnalyzer):
         """Type identifier for this analyzer."""
         return self._analysis_type
 
-    def _validate_data_source(self, data_source: Dict[str, Any]) -> None:
+    def _validate_data_source(self, data_source: dict[str, Any]) -> None:
         """
         Validate that the data source contains required information.
 
@@ -108,7 +116,9 @@ class BaseAnalyzer(IAnalyzer):
         if not data_source:
             raise ValueError("data_source cannot be empty")
 
-    def _create_result(self, output_paths: list, summary: Dict[str, Any], date: str) -> AnalysisResult:
+    def _create_result(
+        self, output_paths: list, summary: dict[str, Any], date: str
+    ) -> AnalysisResult:
         """
         Create an AnalysisResult with consistent structure.
 
@@ -126,28 +136,28 @@ class BaseAnalyzer(IAnalyzer):
             analysis_type=self.analysis_type,
             date=date,
             output_paths=[Path(path) for path in output_paths],
-            summary=summary
+            summary=summary,
         )
 
 
 class IScrapingCoordinator(ABC):
     """Interface for scraping coordinators."""
-    
+
     @abstractmethod
-    def scrape_for_requirement(self, requirement: DataRequirement) -> Dict[str, Any]:
+    def scrape_for_requirement(self, requirement: DataRequirement) -> dict[str, Any]:
         """Scrape data based on the given requirement."""
         pass
 
 
 class IDataStore(ABC):
     """Interface for data storage operations."""
-    
+
     @abstractmethod
     def save_analysis_result(self, result: AnalysisResult) -> None:
         """Save analysis result to storage."""
         pass
-    
+
     @abstractmethod
-    def load_scraped_data(self, requirement: DataRequirement, date: str) -> Optional[Dict[str, Any]]:
+    def load_scraped_data(self, requirement: DataRequirement, date: str) -> dict[str, Any] | None:
         """Load existing scraped data if available."""
         pass

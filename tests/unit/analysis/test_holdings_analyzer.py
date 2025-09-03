@@ -2,14 +2,13 @@
 
 import tempfile
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
-from typing import Any, Dict
 
 import pytest
 
 from mfa.analysis.analyzers.holdings import HoldingsAnalyzer
 from mfa.config.settings import ConfigProvider
-from mfa.core.exceptions import MFAError
 from mfa.storage.json_store import JsonStore
 
 
@@ -28,15 +27,15 @@ class TestHoldingsAnalyzer:
                 data_requirements=Mock(
                     categories={
                         "largeCap": ["https://coin.zerodha.com/mf/fund/large-cap-fund"],
-                        "midCap": ["https://coin.zerodha.com/mf/fund/mid-cap-fund"]
+                        "midCap": ["https://coin.zerodha.com/mf/fund/mid-cap-fund"],
                     }
                 ),
                 params=Mock(
                     max_holdings=10,
                     max_companies_in_results=100,
                     max_sample_funds_per_company=5,
-                    exclude_from_analysis=["CASH", "TREPS"]
-                )
+                    exclude_from_analysis=["CASH", "TREPS"],
+                ),
             )
         }
 
@@ -49,19 +48,24 @@ class TestHoldingsAnalyzer:
         return config_provider
 
     @pytest.fixture
-    def sample_file_data(self) -> Dict[str, Any]:
+    def sample_file_data(self) -> dict[str, Any]:
         """Sample JSON data for testing."""
         return {
             "data": {
-                "fund_info": {
-                    "fund_name": "Test Fund",
-                    "aum": "₹1000 Cr"
-                },
+                "fund_info": {"fund_name": "Test Fund", "aum": "₹1000 Cr"},
                 "top_holdings": [
-                    {"rank": 1, "company_name": "Reliance Industries", "allocation_percentage": "8.5%"},
+                    {
+                        "rank": 1,
+                        "company_name": "Reliance Industries",
+                        "allocation_percentage": "8.5%",
+                    },
                     {"rank": 2, "company_name": "TCS Ltd", "allocation_percentage": "6.2%"},
-                    {"rank": 3, "company_name": "CASH", "allocation_percentage": "2.1%"}  # Should be excluded
-                ]
+                    {
+                        "rank": 3,
+                        "company_name": "CASH",
+                        "allocation_percentage": "2.1%",
+                    },  # Should be excluded
+                ],
             }
         }
 
@@ -70,9 +74,9 @@ class TestHoldingsAnalyzer:
         analyzer = HoldingsAnalyzer(mock_config_provider)
 
         assert analyzer.config_provider is mock_config_provider
-        assert hasattr(analyzer, 'data_processor')
-        assert hasattr(analyzer, 'aggregator')
-        assert hasattr(analyzer, 'output_builder')
+        assert hasattr(analyzer, "data_processor")
+        assert hasattr(analyzer, "aggregator")
+        assert hasattr(analyzer, "output_builder")
 
         # Verify components received the config provider
         assert analyzer.data_processor.config_provider is mock_config_provider
@@ -95,7 +99,9 @@ class TestHoldingsAnalyzer:
         assert "largeCap" in requirements.metadata["categories"]
         assert "midCap" in requirements.metadata["categories"]
 
-    def test_analyze_processes_files_successfully(self, mock_config_provider: Mock, sample_file_data: Dict[str, Any]):
+    def test_analyze_processes_files_successfully(
+        self, mock_config_provider: Mock, sample_file_data: dict[str, Any]
+    ):
         """Test end-to-end analysis processing with file-based data."""
         analyzer = HoldingsAnalyzer(mock_config_provider)
 
@@ -111,12 +117,7 @@ class TestHoldingsAnalyzer:
             JsonStore.save(sample_file_data, file2)
 
             # Mock data source with file paths
-            data_source = {
-                "file_paths": {
-                    "largeCap": [str(file1)],
-                    "midCap": [str(file2)]
-                }
-            }
+            data_source = {"file_paths": {"largeCap": [str(file1)], "midCap": [str(file2)]}}
 
             # Execute analysis
             result = analyzer.analyze(data_source, "20240903")
@@ -137,7 +138,7 @@ class TestHoldingsAnalyzer:
         data_source = {
             "file_paths": {
                 "largeCap": ["/nonexistent/file1.json"],
-                "midCap": ["/nonexistent/file2.json"]
+                "midCap": ["/nonexistent/file2.json"],
             }
         }
 
@@ -160,7 +161,9 @@ class TestHoldingsAnalyzer:
         with pytest.raises(ValueError, match="data_source must be a dictionary"):
             analyzer.analyze(None, "20240903")  # type: ignore
 
-    def test_analyzer_uses_config_for_processing(self, mock_config_provider: Mock, sample_file_data: Dict[str, Any]):
+    def test_analyzer_uses_config_for_processing(
+        self, mock_config_provider: Mock, sample_file_data: dict[str, Any]
+    ):
         """Test analyzer uses configuration values during processing."""
         # Setup config to exclude specific holdings
         mock_config = mock_config_provider.get_config.return_value
@@ -176,7 +179,7 @@ class TestHoldingsAnalyzer:
             data_source = {"file_paths": {"test": [str(file_path)]}}
 
             # Mock the components to verify they receive config
-            with patch.object(analyzer.data_processor, 'process_fund_jsons') as mock_process:
+            with patch.object(analyzer.data_processor, "process_fund_jsons") as mock_process:
                 mock_process.return_value = []
 
                 analyzer.analyze(data_source, "20240903")
@@ -191,7 +194,7 @@ class TestHoldingsAnalyzer:
         analyzer = HoldingsAnalyzer(mock_config_provider)
 
         # Mock data processor to raise an error
-        with patch.object(analyzer.data_processor, 'process_fund_jsons') as mock_process:
+        with patch.object(analyzer.data_processor, "process_fund_jsons") as mock_process:
             mock_process.side_effect = Exception("Processing failed")
 
             data_source = {"file_paths": {"test": ["/some/file.json"]}}

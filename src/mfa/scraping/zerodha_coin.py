@@ -7,8 +7,8 @@ from typing import Any
 from playwright.sync_api import Page
 from pydantic import HttpUrl
 
-from mfa.logging.logger import logger
 from mfa.core.schemas import ExtractedFundDocument, FundData, FundInfo, TopHolding
+from mfa.logging.logger import logger
 from mfa.scraping.core.playwright_scraper import PlaywrightScraper, PlaywrightSession
 
 
@@ -65,7 +65,9 @@ def _extract_meta_fields(body_text: str) -> dict[str, Any]:
     }
 
 
-def _parse_top_holdings(page: Page, base: PlaywrightScraper, max_holdings: int = 10) -> list[dict[str, Any]]:
+def _parse_top_holdings(
+    page: Page, base: PlaywrightScraper, max_holdings: int = 10
+) -> list[dict[str, Any]]:
     tbl = base.find_holdings_table(page)
     if tbl:
         res = base.parse_holdings_from_table(page, tbl, max_holdings)
@@ -176,10 +178,12 @@ class ZerodhaCoinScraper(PlaywrightScraper):
         # Pass session through; base will create one if None and mark _own correctly
         super().__init__(session=session, headless=headless, nav_timeout_ms=nav_timeout_ms)
 
-    def scrape(self, url: str, max_holdings: int = 10, storage_config: dict | None = None) -> dict[str, Any]:
+    def scrape(
+        self, url: str, max_holdings: int = 10, storage_config: dict | None = None
+    ) -> dict[str, Any]:
         """
         Scrape fund data from a URL with configurable holdings limit and smart storage.
-        
+
         Args:
             url: Fund URL to scrape
             max_holdings: Maximum number of holdings to extract
@@ -188,22 +192,24 @@ class ZerodhaCoinScraper(PlaywrightScraper):
                 - base_dir: str - Base directory for storage
                 - category: str - Fund category for organization
                 - filename_prefix: str - Prefix for generated filenames
-                
+
         Returns:
             dict: Scraped fund data document
         """
         logger.debug("🌐 Starting scrape for: {}", url)
-        
+
         session_opened = self._open_session_if_needed()
         try:
             page = self._navigate_to_fund_page(url)
             self._prepare_holdings_section(page)
             fund_name, meta, holdings = self._extract_fund_data(page, max_holdings)
             self._log_extraction_results(fund_name, meta, holdings, max_holdings, url)
-            
-            document = self._build_and_optionally_save_document(url, fund_name, meta, holdings, storage_config)
+
+            document = self._build_and_optionally_save_document(
+                url, fund_name, meta, holdings, storage_config
+            )
             return document
-            
+
         except Exception as e:
             self._log_scraping_error(url, e)
             raise
@@ -233,15 +239,15 @@ class ZerodhaCoinScraper(PlaywrightScraper):
         """Scroll to the holdings section if found."""
         logger.debug("🔍 Looking for holdings section...")
         try:
-            page.get_by_text(
-                re.compile(r"top\s+holdings", re.I)
-            ).first.scroll_into_view_if_needed(timeout=2000)
+            page.get_by_text(re.compile(r"top\s+holdings", re.I)).first.scroll_into_view_if_needed(
+                timeout=2000
+            )
             logger.debug("✅ Found 'Top Holdings' section")
         except Exception:
             try:
-                page.get_by_text(
-                    re.compile(r"holdings", re.I)
-                ).first.scroll_into_view_if_needed(timeout=2000)
+                page.get_by_text(re.compile(r"holdings", re.I)).first.scroll_into_view_if_needed(
+                    timeout=2000
+                )
                 logger.debug("✅ Found 'Holdings' section (alternative)")
             except Exception:
                 logger.debug("⚠️ Holdings section not found, continuing...")
@@ -266,14 +272,16 @@ class ZerodhaCoinScraper(PlaywrightScraper):
             except Exception:
                 logger.debug("⚠️ Holdings data not immediately visible, proceeding...")
 
-    def _extract_fund_data(self, page: Page, max_holdings: int) -> tuple[str | None, dict[str, Any], list[dict[str, Any]]]:
+    def _extract_fund_data(
+        self, page: Page, max_holdings: int
+    ) -> tuple[str | None, dict[str, Any], list[dict[str, Any]]]:
         """Extract all fund data from the page. Returns (fund_name, metadata, holdings)."""
         logger.debug("📋 Extracting fund information...")
-        
+
         # Extract basic fund information
         body_text = self.get_body_text(page)
         fund_name = self.extract_heading(page)
-        
+
         if fund_name:
             logger.debug("🏦 Fund name: {}", fund_name)
         else:
@@ -286,23 +294,38 @@ class ZerodhaCoinScraper(PlaywrightScraper):
         # Extract holdings data
         logger.debug("📈 Parsing holdings data...")
         holdings = _parse_top_holdings(page, self, max_holdings)
-        
+
         return fund_name, meta, holdings
 
-    def _log_extraction_results(self, fund_name: str | None, meta: dict[str, Any], 
-                              holdings: list[dict[str, Any]], max_holdings: int, url: str) -> None:
+    def _log_extraction_results(
+        self,
+        fund_name: str | None,
+        meta: dict[str, Any],
+        holdings: list[dict[str, Any]],
+        max_holdings: int,
+        url: str,
+    ) -> None:
         """Log the results of data extraction with validation."""
         # Validate and report holdings extraction
-        expected_min = min(max_holdings, 5)  # Expect at least 5 holdings, but not more than requested
+        expected_min = min(
+            max_holdings, 5
+        )  # Expect at least 5 holdings, but not more than requested
         if len(holdings) < expected_min:
-            logger.warning("⚠️  Low holdings count: {} (expected {}+ for max_holdings={})", 
-                          len(holdings), expected_min, max_holdings)
+            logger.warning(
+                "⚠️  Low holdings count: {} (expected {}+ for max_holdings={})",
+                len(holdings),
+                expected_min,
+                max_holdings,
+            )
             logger.warning("🏦 Fund: {}", fund_name or "Unknown")
             logger.warning("🔗 URL: {}", url)
             logger.info("💡 This might indicate incomplete data extraction")
         else:
-            logger.debug("✅ Successfully extracted {} holdings (max_holdings={})", 
-                        len(holdings), max_holdings)
+            logger.debug(
+                "✅ Successfully extracted {} holdings (max_holdings={})",
+                len(holdings),
+                max_holdings,
+            )
 
         # Log key metadata if available
         if meta.get("aum"):
@@ -311,27 +334,27 @@ class ZerodhaCoinScraper(PlaywrightScraper):
             logger.debug("📊 Expense Ratio: {}", meta["expense_ratio"])
 
     def _build_and_optionally_save_document(
-        self, 
-        url: str, 
-        fund_name: str | None, 
-        meta: dict[str, Any], 
-        holdings: list[dict[str, Any]], 
-        storage_config: dict | None
+        self,
+        url: str,
+        fund_name: str | None,
+        meta: dict[str, Any],
+        holdings: list[dict[str, Any]],
+        storage_config: dict | None,
     ) -> dict[str, Any]:
         """
         Build the final document and optionally save using JSONStore.
-        
+
         This method now delegates storage responsibilities to JSONStore,
         following single responsibility principle.
         """
         logger.debug("🗺️ Building final document...")
         document = _build_document(url, fund_name, meta, holdings)
-        
+
         # Use PathGenerator and JSONStore for smart storage if requested
         if storage_config and storage_config.get("should_save", False):
+            from mfa.config.settings import ConfigProvider
             from mfa.storage.json_store import JsonStore
             from mfa.storage.path_generator import PathGenerator
-            from mfa.config.settings import ConfigProvider
 
             # Create path generator and generate path
             config_provider = ConfigProvider()  # Could be injected if needed
@@ -340,17 +363,15 @@ class ZerodhaCoinScraper(PlaywrightScraper):
             # Create analysis config dict for path generation
             analysis_config = {
                 "type": storage_config.get("analysis_type", "default"),
-                "path_template": storage_config.get("path_template")
+                "path_template": storage_config.get("path_template"),
             }
 
             file_path = path_gen.generate_scraped_data_path(
-                url=url,
-                category=storage_config["category"],
-                analysis_config=analysis_config
+                url=url, category=storage_config["category"], analysis_config=analysis_config
             )
 
             JsonStore.save_with_path(data=document, file_path=file_path)
-        
+
         return document
 
     def _log_scraping_error(self, url: str, error: Exception) -> None:
