@@ -1,105 +1,111 @@
-# Architecture
+# Architecture Guide
 
-This project follows a **clean, modular architecture** with clear separation of concerns:
+**For developers contributing to the Mutual Fund Analyzer.**
 
-## 🏗️ High-Level Structure
+## 🏛️ Core Principles
+
+- **Clean Architecture**: Business logic isolated from infrastructure
+- **Dependency Injection**: All components receive dependencies via constructor
+- **Factory Pattern**: Extensible component creation
+- **Interface Segregation**: Clear contracts between components
+- **Configuration-Driven**: Behavior controlled by YAML, not code
+
+## 📁 Project Structure
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   CLI Layer     │    │  Business Logic │    │  Infrastructure │
-│                 │    │                 │    │                 │
-│ • orchestrate   │───▶│ • Orchestrator  │───▶│ • JsonStore     │
-│ • analyze       │    │ • Analyzer      │    │ • PlaywrightScr │
-│ • pipeline      │    │ • ZerodhaScraper│    │ • Config        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+src/mfa/
+├── cli/              # Command-line interfaces
+├── analysis/         # Core analysis logic
+│   ├── interfaces.py # Abstract base classes
+│   ├── factories.py  # Component factories
+│   ├── analyzers/    # Analysis implementations
+│   └── scraping/     # Scraping coordinators
+├── orchestration/    # Workflow orchestration
+├── scraping/         # Browser automation
+├── storage/          # File I/O operations
+├── config/           # Configuration management
+├── core/             # Shared utilities
+└── web/              # Dashboard interface
 ```
 
-**Design Principles:**
-- **Thin CLI** - Only argument parsing, delegates to business logic
-- **Single Responsibility** - Each module has one clear purpose  
-- **Configuration-Driven** - User-friendly YAML configuration
-- **Testable** - Business logic separated from I/O and CLI concerns
+## 🔧 Key Components
 
-## 📦 Module Overview
+### Analysis System
+- **`IAnalyzer`**: Interface for all analysis implementations
+- **`BaseAnalyzer`**: Common functionality for analyzers
+- **`HoldingsAnalyzer`**: Main analysis implementation
+- **`AnalyzerFactory`**: Creates analyzer instances
 
-### CLI Layer (`src/mfa/cli/`)
-**Purpose:** Thin interface layer that only handles argument parsing
+### Scraping System
+- **`IScrapingCoordinator`**: Interface for scraping strategies
+- **`CategoryScrapingCoordinator`**: Scrapes funds by category
+- **`TargetedScrapingCoordinator`**: Scrapes specific fund lists
+- **`ScrapingCoordinatorFactory`**: Creates coordinator instances
 
-- `orchestrate.py` - Entry point for fund data collection
-- `analyze.py` - Entry point for holdings analysis  
-- `pipeline.py` - Combined scrape + analyze workflow
-- `scrape.py` - Direct scraping utility
+### Configuration
+- **`ConfigProvider`**: Singleton configuration access
+- **`MFAConfig`**: Pydantic configuration model
+- **YAML-driven**: All behavior controlled by `config/config.yaml`
 
-### Business Logic
+## 🚀 Development Workflow
 
-#### Orchestration (`src/mfa/orchestration/`)
-**Purpose:** Coordinates fund data collection across categories
+### Adding New Analysis Types
 
-- `orchestrator.py` - Main orchestration logic
-  - Validates configuration and fund categories
-  - Manages scraping sessions and rate limiting
-  - Handles errors and provides comprehensive logging
-  - Returns structured results with success/failure statistics
+1. **Create analyzer class** in `analysis/analyzers/`:
+```python
+@register_analyzer("portfolio-analysis")
+class PortfolioAnalyzer(BaseAnalyzer):
+    def __init__(self, config_provider: ConfigProvider):
+        super().__init__(config_provider, "portfolio-analysis")
+        # Your initialization
 
-#### Analysis (`src/mfa/analysis/`)  
-**Purpose:** Processes scraped data to find patterns and overlaps
+    def get_data_requirements(self) -> DataRequirement:
+        # Define what data you need
+        return DataRequirement(...)
 
-- `analyzer.py` - Core analysis engine
-  - Aggregates holdings across multiple funds
-  - Normalizes company names and filters excluded holdings
-  - Builds ranked lists by fund count and total weight
-  - Identifies companies common across all funds
+    def analyze(self, data_source: dict, date: str) -> AnalysisResult:
+        # Your analysis logic
+        return AnalysisResult(...)
+```
 
-#### Storage (`src/mfa/storage/`)
-**Purpose:** Centralized file I/O operations
+2. **Add configuration** in `config/config.yaml`:
+```yaml
+analyses:
+  portfolio-analysis:
+    enabled: true
+    type: portfolio-analysis
+    params:
+      custom_param: value
+```
 
-- `json_store.py` - JSON persistence layer
-  - Save/load operations with error handling
-  - File validation and size reporting
-  - Consistent JSON formatting across the application
+### Adding New Scraping Strategies
 
-### Infrastructure
+1. **Create coordinator** in `analysis/scraping/`:
+```python
+@register_coordinator("custom-strategy")
+class CustomScrapingCoordinator(BaseScrapingCoordinator):
+    def scrape_for_requirement(self, requirement: DataRequirement) -> dict:
+        # Your scraping logic
+        return scraped_data
+```
 
-#### Scraping (`src/mfa/scraping/`)
-**Purpose:** Browser automation and site-specific data extraction
+2. **Update configuration** to use new strategy:
+```yaml
+analyses:
+  holdings:
+    data_requirements:
+      scraping_strategy: custom-strategy
+```
 
-- `core/playwright_scraper.py` - Reusable browser automation
-  - Session management with lazy initialization
-  - Navigation helpers (goto, click, wait)
-  - Table parsing and data extraction utilities
-- `zerodha_coin.py` - Site-specific scraper implementation
-  - Extends base scraper for Zerodha Coin specifics
-  - Handles fund page navigation and holdings extraction
+### Testing Strategy
 
-#### Web Interface (`src/mfa/web/`)
-**Purpose:** Dashboard and visualization
+- **Unit Tests**: Test individual components in isolation
+- **Integration Tests**: Test end-to-end workflows
+- **Mock Dependencies**: Use dependency injection for testability
 
-- `server.py` - FastAPI backend serving API + static files
-- `static/index.html` - Interactive frontend with Chart.js
+### Code Quality Standards
 
-#### Configuration & Support
-- `config/settings.py` - Configuration management via Pydantic
-- `logging/logger.py` - Structured logging with Loguru
-- `models/schemas.py` - Type-safe data models
-
-## 🔧 Key Architectural Benefits
-
-**1. Testability**
-- Business logic is isolated from CLI and I/O concerns
-- Each module can be unit tested independently
-- Clear interfaces between components
-
-**2. Maintainability**  
-- Single responsibility principle applied throughout
-- Clear separation between configuration and code
-- Modular structure allows independent evolution
-
-**3. Extensibility**
-- Easy to add new scrapers by extending base classes
-- Configuration-driven fund management
-- Plugin-style architecture for new analysis features
-
-**4. User Experience**
-- Simple YAML configuration with sensible defaults
-- Comprehensive error messages and logging
-- Progress tracking and success/failure reporting
+- **Type Hints**: All functions and methods must have type annotations
+- **Docstrings**: Comprehensive documentation for public APIs
+- **Linting**: Must pass `make lint` before merging
+- **Testing**: 90%+ code coverage for new features

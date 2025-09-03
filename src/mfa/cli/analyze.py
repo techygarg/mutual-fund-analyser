@@ -12,22 +12,48 @@ from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run MFA analysis")
+    parser = argparse.ArgumentParser(
+        description="Mutual Fund Analyzer - Extract and analyze fund holdings",
+        prog="mfa-analyze"
+    )
     parser.add_argument(
         "analysis_type",
-        nargs="?",
-        help="Analysis type to run (e.g., 'holdings'). If not specified, runs all enabled analyses.",
+        help="Analysis type to run (e.g., 'holdings')"
     )
-    parser.add_argument("--date", help="Date (YYYYMMDD) for analysis")
-    parser.add_argument("--list", action="store_true", help="List available analysis types")
-    parser.add_argument("--status", action="store_true", help="Show analysis status")
+    parser.add_argument(
+        "--category", "-c",
+        help="Fund category to analyze (largeCap, midCap, smallCap)"
+    )
+    parser.add_argument(
+        "--date", "-d",
+        help="Date for analysis (YYYYMMDD format). Defaults to today."
+    )
+    parser.add_argument(
+        "--list", "-l",
+        action="store_true",
+        help="List available analysis types and exit"
+    )
+    parser.add_argument(
+        "--status", "-s",
+        action="store_true",
+        help="Show current analysis configuration and exit"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose logging"
+    )
     return parser.parse_args()
 
 
 def main() -> None:
-    setup_logging()
-
     args = _parse_args()
+
+    # Setup logging based on verbosity
+    if args.verbose:
+        setup_logging("DEBUG")
+    else:
+        setup_logging()
 
     try:
         # Create configuration provider using dependency injection
@@ -40,31 +66,49 @@ def main() -> None:
         # Create orchestrator with injected config provider
         orchestrator = AnalysisOrchestrator(config_provider)
     except Exception as e:
-        print(f"\n❌ Failed to initialize application: {e}")
+        print(f"\n❌ Failed to initialize Mutual Fund Analyzer: {e}")
+        print("💡 Check your configuration and try again.")
         import sys
-
         sys.exit(1)
 
+    # Handle informational commands
     if args.list:
+        print("📋 Available analysis types:")
         analyses = orchestrator.list_available_analyses()
-        print("Available analyses:")
         for name in analyses:
-            print(f"  - {name}")
+            print(f"  • {name}")
+        print(f"\n💡 Run 'mfa-analyze {analyses[0] if analyses else 'analysis-type'}' to start analysis")
         return
 
     if args.status:
-        status = orchestrator.get_analysis_status()
-        print("Analysis status:")
-        for name, info in status.items():
-            enabled_str = "enabled" if info["enabled"] else "disabled"
-            print(f"  {name} ({info['type']}) - {enabled_str} - {info['strategy']} strategy")
+        print("📊 Analysis Configuration Status:")
+        try:
+            status = orchestrator.get_analysis_status()
+            for name, info in status.items():
+                enabled_icon = "✅" if info["enabled"] else "❌"
+                print(f"  {enabled_icon} {name} ({info['type']}) - {info['strategy']} strategy")
+        except Exception as e:
+            print(f"  ❌ Could not retrieve status: {e}")
         return
 
+    # Main analysis execution
     try:
+        print("🚀 Starting Mutual Fund Analysis...")
+        if args.category:
+            print(f"📂 Category: {args.category}")
+        if args.date:
+            print(f"📅 Date: {args.date}")
+        if args.analysis_type:
+            print(f"🔍 Analysis: {args.analysis_type}")
+
         orchestrator.run_analysis(args.analysis_type, args.date)
-        print("\n🎉 Analysis orchestration completed successfully!")
+
+        print("\n🎉 Analysis completed successfully!")
+        print("📊 View results at: http://localhost:8787 (run 'make dashboard')")
+
     except Exception as e:
         print(f"\n❌ Analysis failed: {e}")
+        print("💡 Check the troubleshooting guide for common solutions.")
         raise
 
 

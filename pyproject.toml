@@ -53,10 +53,7 @@ dev = [
 ]
 
 [project.scripts]
-mfa-scrape = "mfa.cli.scrape:main"
 mfa-analyze = "mfa.cli.analyze:main"
-mfa-pipeline = "mfa.cli.pipeline:main"
-mfa-orchestrate = "mfa.cli.orchestrate:main"
 
 [tool.ruff]
 target-version = "py310"
