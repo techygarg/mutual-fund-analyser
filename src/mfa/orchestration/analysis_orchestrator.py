@@ -12,7 +12,7 @@ from typing import Any, Dict, Optional
 from mfa.analysis.factories import AnalyzerFactory, ScrapingCoordinatorFactory
 from mfa.config.models import AnalysisConfig
 from mfa.config.settings import ConfigProvider
-from mfa.core.exceptions import OrchestrationError, create_analysis_error
+from mfa.core.exceptions import OrchestrationError, AnalysisError, create_analysis_error
 from mfa.logging.logger import logger
 
 
@@ -97,7 +97,7 @@ class AnalysisOrchestrator:
         except Exception as e:
             logger.error(f"❌ Analysis '{analysis_id}' failed: {e}")
             logger.debug("Full traceback:", exc_info=True)
-            if isinstance(e, (OrchestrationError, create_analysis_error("", analysis_type=analysis_id).error_class)):
+            if isinstance(e, (OrchestrationError, AnalysisError)):
                 raise  # Re-raise our custom exceptions
             else:
                 # Wrap unexpected exceptions

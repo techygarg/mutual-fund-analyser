@@ -213,4 +213,8 @@ outputs/
 # Test integration workspace
 tests/integration/test_workspace/
 
+# Mock objects and test artifacts
+<Mock*
+*Mock*
+
 .cursor*

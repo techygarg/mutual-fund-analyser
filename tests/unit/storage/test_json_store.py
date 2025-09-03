@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from mfa.storage.json_store import JsonStorageError, JsonStore
+from mfa.storage.json_store import JsonStore
+from mfa.core.exceptions import StorageError
 
 
 class TestJsonStore:
@@ -43,7 +44,7 @@ class TestJsonStore:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "nonexistent.json"
 
-            with pytest.raises(JsonStorageError, match="Failed to load JSON file"):
+            with pytest.raises(StorageError, match="Failed to load JSON"):
                 JsonStore.load(file_path)
 
     def test_exists_returns_true_for_valid_file(self):
@@ -88,7 +89,7 @@ class TestJsonStore:
         test_data = {"other_key": "value"}
         required_keys = ["required_key", "another_required"]
 
-        with pytest.raises(JsonStorageError, match="Missing required keys"):
+        with pytest.raises(StorageError, match="Missing required keys"):
             JsonStore.validate_json_structure(test_data, required_keys)
 
     @patch("mfa.storage.json_store.orjson.dumps")
@@ -100,5 +101,5 @@ class TestJsonStore:
         with tempfile.TemporaryDirectory() as temp_dir:
             file_path = Path(temp_dir) / "test.json"
 
-            with pytest.raises(JsonStorageError, match="Failed to save JSON file"):
+            with pytest.raises(StorageError, match="Failed to save JSON"):
                 JsonStore.save(test_data, file_path)

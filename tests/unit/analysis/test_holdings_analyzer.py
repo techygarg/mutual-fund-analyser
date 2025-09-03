@@ -1,0 +1,204 @@
+"""Unit tests for HoldingsAnalyzer - business-critical analysis component."""
+
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
+from typing import Any, Dict
+
+import pytest
+
+from mfa.analysis.analyzers.holdings import HoldingsAnalyzer
+from mfa.config.settings import ConfigProvider
+from mfa.core.exceptions import MFAError
+from mfa.storage.json_store import JsonStore
+
+
+class TestHoldingsAnalyzer:
+    """Test HoldingsAnalyzer with dependency injection."""
+
+    @pytest.fixture
+    def mock_config_provider(self) -> Mock:
+        """Mock ConfigProvider for testing."""
+        config_provider = Mock(spec=ConfigProvider)
+
+        # Mock config structure
+        mock_config = Mock()
+        mock_config.analyses = {
+            "holdings": Mock(
+                data_requirements=Mock(
+                    categories={
+                        "largeCap": ["https://coin.zerodha.com/mf/fund/large-cap-fund"],
+                        "midCap": ["https://coin.zerodha.com/mf/fund/mid-cap-fund"]
+                    }
+                ),
+                params=Mock(
+                    max_holdings=10,
+                    max_companies_in_results=100,
+                    max_sample_funds_per_company=5,
+                    exclude_from_analysis=["CASH", "TREPS"]
+                )
+            )
+        }
+
+        # Add paths to prevent mock object directory creation
+        mock_config.paths = Mock()
+        mock_config.paths.output_dir = "/tmp/test_output"
+        mock_config.paths.analysis_dir = "/tmp/test_analysis"
+
+        config_provider.get_config.return_value = mock_config
+        return config_provider
+
+    @pytest.fixture
+    def sample_file_data(self) -> Dict[str, Any]:
+        """Sample JSON data for testing."""
+        return {
+            "data": {
+                "fund_info": {
+                    "fund_name": "Test Fund",
+                    "aum": "₹1000 Cr"
+                },
+                "top_holdings": [
+                    {"rank": 1, "company_name": "Reliance Industries", "allocation_percentage": "8.5%"},
+                    {"rank": 2, "company_name": "TCS Ltd", "allocation_percentage": "6.2%"},
+                    {"rank": 3, "company_name": "CASH", "allocation_percentage": "2.1%"}  # Should be excluded
+                ]
+            }
+        }
+
+    def test_analyzer_initialization(self, mock_config_provider: Mock):
+        """Test analyzer initializes correctly with dependency injection."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        assert analyzer.config_provider is mock_config_provider
+        assert hasattr(analyzer, 'data_processor')
+        assert hasattr(analyzer, 'aggregator')
+        assert hasattr(analyzer, 'output_builder')
+
+        # Verify components received the config provider
+        assert analyzer.data_processor.config_provider is mock_config_provider
+        assert analyzer.aggregator.config_provider is mock_config_provider
+        assert analyzer.output_builder.config_provider is mock_config_provider
+
+    def test_get_data_requirements(self, mock_config_provider: Mock):
+        """Test data requirements extraction from config."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        requirements = analyzer.get_data_requirements()
+
+        assert requirements.strategy.value == "categories"
+        # URLs should contain the actual fund URLs from categories
+        assert "https://coin.zerodha.com/mf/fund/large-cap-fund" in requirements.urls
+        assert "https://coin.zerodha.com/mf/fund/mid-cap-fund" in requirements.urls
+        assert len(requirements.urls) == 2
+        assert requirements.metadata["analysis_id"] == "holdings"
+        # Categories should be in metadata
+        assert "largeCap" in requirements.metadata["categories"]
+        assert "midCap" in requirements.metadata["categories"]
+
+    def test_analyze_processes_files_successfully(self, mock_config_provider: Mock, sample_file_data: Dict[str, Any]):
+        """Test end-to-end analysis processing with file-based data."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        # Create temporary files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            # Create sample JSON files
+            file1 = temp_path / "large_cap_fund.json"
+            JsonStore.save(sample_file_data, file1)
+
+            file2 = temp_path / "mid_cap_fund.json"
+            JsonStore.save(sample_file_data, file2)
+
+            # Mock data source with file paths
+            data_source = {
+                "file_paths": {
+                    "largeCap": [str(file1)],
+                    "midCap": [str(file2)]
+                }
+            }
+
+            # Execute analysis
+            result = analyzer.analyze(data_source, "20240903")
+
+            # Verify results
+            assert result.analysis_type == "fund-holdings"
+            assert result.date == "20240903"
+            assert len(result.output_paths) == 2  # One for each category
+            assert isinstance(result.summary, dict)
+            assert "total_categories" in result.summary
+            assert result.summary["total_categories"] == 2
+
+    def test_analyze_handles_missing_files_gracefully(self, mock_config_provider: Mock):
+        """Test analysis handles missing files without crashing."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        # Mock data source with non-existent file paths
+        data_source = {
+            "file_paths": {
+                "largeCap": ["/nonexistent/file1.json"],
+                "midCap": ["/nonexistent/file2.json"]
+            }
+        }
+
+        result = analyzer.analyze(data_source, "20240903")
+
+        # Should still return result but with warnings
+        assert result.analysis_type == "fund-holdings"
+        assert result.summary["total_categories"] == 2
+        assert result.summary["categories_processed"] == 0  # No valid files
+
+    def test_analyze_validates_data_source(self, mock_config_provider: Mock):
+        """Test analysis validates input data source."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        # Test with empty data source
+        with pytest.raises(ValueError, match="data_source cannot be empty"):
+            analyzer.analyze({}, "20240903")
+
+        # Test with None data source
+        with pytest.raises(ValueError, match="data_source must be a dictionary"):
+            analyzer.analyze(None, "20240903")  # type: ignore
+
+    def test_analyzer_uses_config_for_processing(self, mock_config_provider: Mock, sample_file_data: Dict[str, Any]):
+        """Test analyzer uses configuration values during processing."""
+        # Setup config to exclude specific holdings
+        mock_config = mock_config_provider.get_config.return_value
+        mock_config.analyses["holdings"].params.exclude_from_analysis = ["CASH", "TREPS"]
+
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            file_path = temp_path / "test_fund.json"
+            JsonStore.save(sample_file_data, file_path)
+
+            data_source = {"file_paths": {"test": [str(file_path)]}}
+
+            # Mock the components to verify they receive config
+            with patch.object(analyzer.data_processor, 'process_fund_jsons') as mock_process:
+                mock_process.return_value = []
+
+                analyzer.analyze(data_source, "20240903")
+
+                # Verify data processor was called with correct parameters
+                mock_process.assert_called_once()
+                args, kwargs = mock_process.call_args
+                assert len(args) == 1  # Only fund_jsons, no params
+
+    def test_analyzer_handles_component_errors(self, mock_config_provider: Mock):
+        """Test analyzer handles errors from individual components gracefully."""
+        analyzer = HoldingsAnalyzer(mock_config_provider)
+
+        # Mock data processor to raise an error
+        with patch.object(analyzer.data_processor, 'process_fund_jsons') as mock_process:
+            mock_process.side_effect = Exception("Processing failed")
+
+            data_source = {"file_paths": {"test": ["/some/file.json"]}}
+
+            # Should not crash, should handle error gracefully
+            result = analyzer.analyze(data_source, "20240903")
+
+            # Verify result structure is maintained
+            assert result.analysis_type == "fund-holdings"
+            assert result.date == "20240903"

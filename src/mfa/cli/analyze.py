@@ -27,15 +27,20 @@ def main() -> None:
 
     args = _parse_args()
 
-    # Create configuration provider using dependency injection
-    config_provider = create_config_provider()
+    try:
+        # Create configuration provider using dependency injection
+        config_provider = create_config_provider()
 
-    # Ensure directories exist
-    config = config_provider.get_config()
-    config.ensure_directories()
+        # Ensure directories exist
+        config = config_provider.get_config()
+        config.ensure_directories()
 
-    # Create orchestrator with injected config provider
-    orchestrator = AnalysisOrchestrator(config_provider)
+        # Create orchestrator with injected config provider
+        orchestrator = AnalysisOrchestrator(config_provider)
+    except Exception as e:
+        print(f"\n❌ Failed to initialize application: {e}")
+        import sys
+        sys.exit(1)
 
     if args.list:
         analyses = orchestrator.list_available_analyses()
