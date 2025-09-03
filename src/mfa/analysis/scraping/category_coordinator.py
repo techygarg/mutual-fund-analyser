@@ -19,10 +19,15 @@ from .base_coordinator import BaseScrapingCoordinator
 @register_coordinator("categories")
 class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
     """Scraping coordinator for category-based fund collection with file-based output."""
-    
-    def __init__(self):
-        super().__init__()
-        self.config_provider = ConfigProvider.get_instance()
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize category coordinator with injected config provider.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        super().__init__(config_provider)
     
     def scrape_for_requirement(self, requirement: DataRequirement) -> Dict[str, Any]:
         """
@@ -118,37 +123,32 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         return storage_config
     
     def _generate_expected_file_paths(
-        self, 
-        urls: List[str], 
-        category: str, 
+        self,
+        urls: List[str],
+        category: str,
         storage_config: Dict[str, Any]
     ) -> List[str]:
         """Generate the expected file paths where scraped data was saved."""
         from datetime import datetime
-        from mfa.storage.json_store import JsonStore
-        
+
         file_paths = []
         date_str = datetime.now().strftime("%Y%m%d")
-        
+
+        # Create analysis config for path generation
+        analysis_config = {
+            "type": storage_config.get("analysis_type", "default"),
+            "path_template": storage_config.get("path_template")
+        }
+
         for url in urls:
-            # Use the same logic as JsonStore to predict file paths
-            fund_identifier = JsonStore._extract_fund_identifier_from_url(url)
-            filename = f"{storage_config['filename_prefix']}{fund_identifier}.json"
-            
-            # Build directory path (same logic as JsonStore)
-            if storage_config.get("path_template"):
-                directory_path = JsonStore._resolve_path_template(
-                    storage_config["path_template"],
-                    storage_config["base_dir"],
-                    date_str,
-                    storage_config["analysis_type"],
-                    storage_config["category"]
-                )
-            else:
-                # Use smart defaults
-                directory_path = f"{storage_config['base_dir']}/{date_str}/{storage_config['analysis_type']}/{category}"
-            
-            file_path = f"{directory_path}/{filename}"
-            file_paths.append(file_path)
-        
+            # Use PathGenerator to generate consistent paths
+            file_path = self.path_generator.generate_scraped_data_path(
+                url=url,
+                category=category,
+                analysis_config=analysis_config,
+                date_str=date_str
+            )
+
+            file_paths.append(str(file_path))
+
         return file_paths

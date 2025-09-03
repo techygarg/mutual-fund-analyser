@@ -19,10 +19,15 @@ from .base_coordinator import BaseScrapingCoordinator
 @register_coordinator("targeted_funds")
 class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
     """Scraping coordinator for targeted fund collection with file-based output."""
-    
-    def __init__(self):
-        super().__init__()
-        self.config_provider = ConfigProvider.get_instance()
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize targeted coordinator with injected config provider.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        super().__init__(config_provider)
     
     def scrape_for_requirement(self, requirement: DataRequirement) -> Dict[str, Any]:
         """

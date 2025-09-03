@@ -13,13 +13,21 @@ from typing import Any, Dict, List
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
+from mfa.storage.path_generator import PathGenerator
 
 
 class BaseScrapingCoordinator(ABC):
-    """Base class for scraping coordinators with direct config access."""
-    
-    def __init__(self):
-        self.config_provider = ConfigProvider.get_instance()
+    """Base class for scraping coordinators with dependency injection."""
+
+    def __init__(self, config_provider: ConfigProvider):
+        """
+        Initialize base coordinator with injected config provider.
+
+        Args:
+            config_provider: Configuration provider instance
+        """
+        self.config_provider = config_provider
+        self.path_generator = PathGenerator(config_provider)
         self._scraper = None
     
     def _get_scraper(self) -> ZerodhaCoinScraper:

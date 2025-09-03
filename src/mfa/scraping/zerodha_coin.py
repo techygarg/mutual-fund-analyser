@@ -8,7 +8,7 @@ from playwright.sync_api import Page
 from pydantic import HttpUrl
 
 from mfa.logging.logger import logger
-from mfa.models.schemas import ExtractedFundDocument, FundData, FundInfo, TopHolding
+from mfa.core.schemas import ExtractedFundDocument, FundData, FundInfo, TopHolding
 from mfa.scraping.core.playwright_scraper import PlaywrightScraper, PlaywrightSession
 
 
@@ -327,19 +327,29 @@ class ZerodhaCoinScraper(PlaywrightScraper):
         logger.debug("🗺️ Building final document...")
         document = _build_document(url, fund_name, meta, holdings)
         
-        # Use JSONStore for smart storage if requested
+        # Use PathGenerator and JSONStore for smart storage if requested
         if storage_config and storage_config.get("should_save", False):
             from mfa.storage.json_store import JsonStore
-            
-            JsonStore.save_with_template(
-                data=document,
-                base_dir=storage_config["base_dir"],
-                category=storage_config["category"],
+            from mfa.storage.path_generator import PathGenerator
+            from mfa.config.settings import ConfigProvider
+
+            # Create path generator and generate path
+            config_provider = ConfigProvider()  # Could be injected if needed
+            path_gen = PathGenerator(config_provider)
+
+            # Create analysis config dict for path generation
+            analysis_config = {
+                "type": storage_config.get("analysis_type", "default"),
+                "path_template": storage_config.get("path_template")
+            }
+
+            file_path = path_gen.generate_scraped_data_path(
                 url=url,
-                filename_prefix=storage_config.get("filename_prefix", "coin_"),
-                path_template=storage_config.get("path_template"),
-                analysis_type=storage_config.get("analysis_type", "default")
+                category=storage_config["category"],
+                analysis_config=analysis_config
             )
+
+            JsonStore.save_with_path(data=document, file_path=file_path)
         
         return document
 

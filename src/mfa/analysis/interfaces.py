@@ -38,22 +38,96 @@ class AnalysisResult:
 
 class IAnalyzer(ABC):
     """Interface that all analyzers must implement."""
-    
+
     @abstractmethod
     def get_data_requirements(self) -> DataRequirement:
         """Define what data this analyzer needs to be scraped."""
         pass
-    
+
     @abstractmethod
-    def analyze(self, scraped_data: Dict[str, Any], date: str) -> AnalysisResult:
-        """Perform the analysis on scraped data."""
+    def analyze(self, data_source: Dict[str, Any], date: str) -> AnalysisResult:
+        """
+        Perform the analysis on the provided data source.
+
+        The data_source can contain either:
+        - Direct scraped data (in-memory)
+        - File path information for file-based analysis
+        - Metadata about where to find the data
+
+        Args:
+            data_source: Data source containing scraped information or file references
+            date: Analysis date for output file naming
+
+        Returns:
+            AnalysisResult with analysis outputs and summary
+        """
         pass
-    
+
     @property
     @abstractmethod
     def analysis_type(self) -> str:
         """Type identifier for this analyzer."""
         pass
+
+
+class BaseAnalyzer(IAnalyzer):
+    """
+    Base implementation of IAnalyzer providing common functionality.
+
+    This class provides default implementations for common analyzer functionality,
+    allowing concrete analyzers to focus on their specific analysis logic.
+    """
+
+    def __init__(self, analysis_type: str):
+        """
+        Initialize base analyzer.
+
+        Args:
+            analysis_type: String identifier for this analyzer type
+        """
+        self._analysis_type = analysis_type
+
+    @property
+    def analysis_type(self) -> str:
+        """Type identifier for this analyzer."""
+        return self._analysis_type
+
+    def _validate_data_source(self, data_source: Dict[str, Any]) -> None:
+        """
+        Validate that the data source contains required information.
+
+        Args:
+            data_source: Data source to validate
+
+        Raises:
+            ValueError: If data source is invalid
+        """
+        if not isinstance(data_source, dict):
+            raise ValueError("data_source must be a dictionary")
+
+        if not data_source:
+            raise ValueError("data_source cannot be empty")
+
+    def _create_result(self, output_paths: list, summary: Dict[str, Any], date: str) -> AnalysisResult:
+        """
+        Create an AnalysisResult with consistent structure.
+
+        Args:
+            output_paths: List of paths to generated output files
+            summary: Summary dictionary with analysis metrics
+            date: Analysis date
+
+        Returns:
+            Properly structured AnalysisResult
+        """
+        from pathlib import Path
+
+        return AnalysisResult(
+            analysis_type=self.analysis_type,
+            date=date,
+            output_paths=[Path(path) for path in output_paths],
+            summary=summary
+        )
 
 
 class IScrapingCoordinator(ABC):

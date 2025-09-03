@@ -8,31 +8,31 @@ from typing import Any, Optional
 import yaml
 from dotenv import load_dotenv
 
+from mfa.core.exceptions import ConfigurationError, create_config_error
 from .models import MFAConfig, AnalysisConfig
 
 
 class ConfigProvider:
     """
     Configuration provider with type-safe model support.
-    
-    Provides structured, typed access to configuration through Pydantic models.
+
+    Now uses dependency injection instead of singleton pattern for better testability
+    and flexibility.
     """
-    _instance: ConfigProvider | None = None
-    _raw_config: dict[str, Any] | None = None
-    _typed_config: MFAConfig | None = None
 
-    def __new__(cls) -> ConfigProvider:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    def __init__(self, config_path: Optional[Path] = None):
+        """
+        Initialize configuration provider.
 
-    def __init__(self) -> None:
-        if self._raw_config is None:
-            self._load_config()
+        Args:
+            config_path: Optional path to config file. If None, uses default location.
+        """
+        self.config_path = config_path or (Path.cwd() / "config" / "config.yaml")
+        self._raw_config: dict[str, Any] | None = None
+        self._typed_config: MFAConfig | None = None
 
-    @classmethod
-    def get_instance(cls) -> ConfigProvider:
-        return cls()
+        # Load configuration immediately
+        self._load_config()
 
     def _load_config(self) -> None:
         """Load configuration from YAML file with environment variable resolution."""
@@ -40,15 +40,14 @@ class ConfigProvider:
         if env_path.exists():
             load_dotenv(env_path)
 
-        config_path = Path.cwd() / "config" / "config.yaml"
-        if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
+        if not self.config_path.exists():
+            raise create_config_error(f"Configuration file not found: {self.config_path}", str(self.config_path))
 
-        with open(config_path, encoding="utf-8") as fh:
+        with open(self.config_path, encoding="utf-8") as fh:
             raw = yaml.safe_load(fh) or {}
 
         self._raw_config = self._resolve_env_vars(raw)
-        
+
         # Create typed configuration model
         self._typed_config = MFAConfig(**self._raw_config)
 
@@ -67,23 +66,38 @@ class ConfigProvider:
             return obj
         return obj
 
-    # Removed legacy string-based access methods - use get_config() instead
-
-    # New type-safe access methods
     def get_config(self) -> MFAConfig:
         """Get the complete typed configuration model."""
         if self._typed_config is None:
-            raise RuntimeError("Configuration not loaded")
+            raise ConfigurationError("Configuration not loaded - call load_config() first")
         return self._typed_config
-    
+
     def get_analysis_config(self, analysis_name: str) -> Optional[AnalysisConfig]:
         """Get configuration for a specific analysis."""
         return self.get_config().get_analysis(analysis_name)
-    
+
     def get_enabled_analyses(self) -> dict[str, AnalysisConfig]:
         """Get all enabled analysis configurations."""
         return self.get_config().get_enabled_analyses()
 
 
-# Create singleton instance
-config = ConfigProvider.get_instance()
+# Factory function for backwards compatibility during transition
+def create_config_provider(config_path: Optional[Path] = None) -> ConfigProvider:
+    """
+    Factory function to create a ConfigProvider instance.
+
+    This provides a clean interface for dependency injection while maintaining
+    backwards compatibility during the transition.
+    """
+    return ConfigProvider(config_path)
+
+
+# For backwards compatibility during transition - will be removed
+_default_provider: ConfigProvider | None = None
+
+def get_default_config_provider() -> ConfigProvider:
+    """Get default config provider (temporary compatibility function)."""
+    global _default_provider
+    if _default_provider is None:
+        _default_provider = ConfigProvider()
+    return _default_provider
