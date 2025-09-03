@@ -1,13 +1,14 @@
 """
-Category-based scraping coordinator.
+Category-based scraping coordinator with direct config access.
 
 This coordinator handles scraping funds organized by categories,
-which is used by the holdings analysis.
+saves data to files, and provides file paths for analysis.
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
+from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
 
 from ..factories import register_coordinator
@@ -17,15 +18,29 @@ from .base_coordinator import BaseScrapingCoordinator
 
 @register_coordinator("categories")
 class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
-    """Scraping coordinator for category-based fund collection."""
+    """Scraping coordinator for category-based fund collection with file-based output."""
+    
+    def __init__(self):
+        super().__init__()
+        self.config_provider = ConfigProvider.get_instance()
     
     def scrape_for_requirement(self, requirement: DataRequirement) -> Dict[str, Any]:
-        """Scrape funds organized by categories with hybrid template support."""
-        categories = requirement.metadata["categories"]
+        """
+        Scrape funds organized by categories and save to files.
         
-        # Get scraping parameters from requirement metadata
-        max_holdings = requirement.metadata.get("max_holdings", 10)
-        analysis_config = requirement.metadata.get("analysis_config", {})
+        Returns file paths for analysis instead of in-memory data.
+        """
+        categories = requirement.metadata["categories"]
+        analysis_id = requirement.metadata.get("analysis_id", "default")
+        
+        # Read config directly for this analysis
+        config = self.config_provider.get_config()
+        analysis_config = config.analyses.get(analysis_id)  # Dictionary access
+        
+        if not analysis_config:
+            raise ValueError(f"Analysis config not found: {analysis_id}")
+        
+        max_holdings = analysis_config.params.max_holdings
         
         # Calculate total URLs for logging
         total_urls = sum(len(urls) for urls in categories.values())
@@ -33,7 +48,8 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         
         scraped_data = {
             "strategy": "categories",
-            "data": {}
+            "data": {},
+            "file_paths": {}  # Track where files are saved for analysis
         }
         
         successful_scrapes = 0
@@ -41,18 +57,98 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         for category, urls in categories.items():
             logger.info(f"📂 Scraping category: {category} ({len(urls)} funds)")
             
-            category_results = self._scrape_urls_with_delay(
-                urls, 
-                max_holdings=max_holdings, 
-                category=category, 
-                analysis_config=analysis_config
+            # Scrape and save to files
+            category_results, file_paths = self._scrape_and_save_category(
+                urls, category, max_holdings, analysis_config
             )
+            
+            # Store both in-memory data (for compatibility) and file paths
             scraped_data["data"][category] = category_results
+            scraped_data["file_paths"][category] = file_paths
             
             successful_scrapes += len(category_results)
             logger.info(f"   ✅ Category '{category}': {len(category_results)}/{len(urls)} funds scraped")
+            logger.info(f"   📁 Saved to {len(file_paths)} files")
         
         self._log_scraping_complete("category-based", successful_scrapes, total_urls)
         return scraped_data
     
-
+    def _scrape_and_save_category(
+        self, 
+        urls: List[str], 
+        category: str, 
+        max_holdings: int,
+        analysis_config: Any
+    ) -> tuple[List[Dict[str, Any]], List[str]]:
+        """
+        Scrape URLs for a category and save to files.
+        
+        Returns:
+            tuple: (scraped_data_list, file_paths_list)
+        """
+        # Build storage config for this category
+        storage_config = self._build_storage_config_for_category(category, analysis_config)
+        
+        # Scrape with file saving enabled
+        category_results = self._scrape_urls_with_delay(
+            urls, max_holdings, category, storage_config
+        )
+        
+        # Generate file paths that were created
+        file_paths = self._generate_expected_file_paths(urls, category, storage_config)
+        
+        return category_results, file_paths
+    
+    def _build_storage_config_for_category(self, category: str, analysis_config: Any) -> Dict[str, Any]:
+        """Build storage configuration for a specific category."""
+        config = self.config_provider.get_config()
+        
+        storage_config = {
+            "should_save": True,  # Always save for file-based analysis
+            "base_dir": config.paths.output_dir,
+            "category": category,
+            "filename_prefix": config.output.filename_prefix,
+            "analysis_type": analysis_config.type.split("-")[-1]  # "fund-holdings" -> "holdings"
+        }
+        
+        # Add custom path template if specified
+        if hasattr(analysis_config, 'path_template') and analysis_config.path_template:
+            storage_config["path_template"] = analysis_config.path_template
+        
+        return storage_config
+    
+    def _generate_expected_file_paths(
+        self, 
+        urls: List[str], 
+        category: str, 
+        storage_config: Dict[str, Any]
+    ) -> List[str]:
+        """Generate the expected file paths where scraped data was saved."""
+        from datetime import datetime
+        from mfa.storage.json_store import JsonStore
+        
+        file_paths = []
+        date_str = datetime.now().strftime("%Y%m%d")
+        
+        for url in urls:
+            # Use the same logic as JsonStore to predict file paths
+            fund_identifier = JsonStore._extract_fund_identifier_from_url(url)
+            filename = f"{storage_config['filename_prefix']}{fund_identifier}.json"
+            
+            # Build directory path (same logic as JsonStore)
+            if storage_config.get("path_template"):
+                directory_path = JsonStore._resolve_path_template(
+                    storage_config["path_template"],
+                    storage_config["base_dir"],
+                    date_str,
+                    storage_config["analysis_type"],
+                    storage_config["category"]
+                )
+            else:
+                # Use smart defaults
+                directory_path = f"{storage_config['base_dir']}/{date_str}/{storage_config['analysis_type']}/{category}"
+            
+            file_path = f"{directory_path}/{filename}"
+            file_paths.append(file_path)
+        
+        return file_paths

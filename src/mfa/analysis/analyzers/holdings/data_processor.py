@@ -1,5 +1,5 @@
 """
-Holdings data processor.
+Holdings data processor with direct config access.
 
 This module handles processing raw fund JSON data into clean,
 structured holdings data for analysis.
@@ -32,16 +32,27 @@ class ProcessedHolding:
 class HoldingsDataProcessor:
     """Processes raw fund JSON data into structured holdings."""
     
-    def __init__(self, params: Dict[str, Any]):
-        self.excluded_holdings = set(params.get("exclude_from_analysis", []))
+    def __init__(self):
+        """Initialize processor - will read config as needed per call."""
+        pass
     
-    def process_fund_jsons(self, fund_jsons: List[Dict]) -> List[ProcessedFund]:
-        """Process a list of fund JSON objects into structured data."""
+    def process_fund_jsons(self, fund_jsons: List[Dict], params: Any) -> List[ProcessedFund]:
+        """
+        Process a list of fund JSON objects into structured data.
+        
+        Args:
+            fund_jsons: List of fund data dictionaries
+            params: Analysis parameters containing exclusions
+            
+        Returns:
+            List of ProcessedFund objects
+        """
+        excluded_holdings = set(params.exclude_from_analysis or [])
         processed_funds = []
         
         for fund_json in fund_jsons:
             try:
-                processed_fund = self._process_single_fund(fund_json)
+                processed_fund = self._process_single_fund(fund_json, excluded_holdings)
                 if processed_fund:
                     processed_funds.append(processed_fund)
             except Exception as e:
@@ -51,59 +62,62 @@ class HoldingsDataProcessor:
         logger.debug(f"Processed {len(processed_funds)} funds from {len(fund_jsons)} JSON files")
         return processed_funds
     
-    def _process_single_fund(self, fund_json: Dict) -> ProcessedFund:
+    def _process_single_fund(self, fund_json: Dict, excluded_holdings: set) -> ProcessedFund | None:
         """Process a single fund JSON into structured data."""
-        data = fund_json.get("data", {})
-        fund_info = data.get("fund_info", {})
-        holdings = data.get("top_holdings", [])
+        try:
+            # Extract fund info
+            fund_data = fund_json.get("data", {})
+            fund_info = fund_data.get("fund_info", {})
+            top_holdings = fund_data.get("top_holdings", [])
+            
+            fund_name = fund_info.get("fund_name", "Unknown Fund")
+            aum = fund_info.get("aum", "N/A")
+            
+            # Process holdings
+            processed_holdings = []
+            for holding_data in top_holdings:
+                company_name = holding_data.get("company_name", "").strip()
+                
+                # Skip excluded holdings
+                if self._is_excluded_holding(company_name, excluded_holdings):
+                    continue
+                
+                # Parse allocation percentage
+                allocation_str = holding_data.get("allocation_percentage", "0%")
+                allocation_pct = self._parse_percentage(allocation_str)
+                
+                # Get rank
+                rank = holding_data.get("rank", 0)
+                
+                if company_name and allocation_pct > 0:
+                    processed_holdings.append(ProcessedHolding(
+                        company_name=company_name,
+                        allocation_percentage=allocation_pct,
+                        rank=rank
+                    ))
+            
+            if processed_holdings:
+                return ProcessedFund(
+                    name=fund_name,
+                    aum=aum,
+                    holdings=processed_holdings
+                )
+            
+        except Exception as e:
+            logger.warning(f"Error processing fund {fund_json.get('source_url', 'unknown')}: {e}")
         
-        fund_name = fund_info.get("fund_name", "Unknown Fund")
-        aum = fund_info.get("aum", "")
-        
-        processed_holdings = []
-        for holding in holdings:
-            processed_holding = self._process_single_holding(holding)
-            if processed_holding and self._is_valid_holding(processed_holding):
-                processed_holdings.append(processed_holding)
-        
-        return ProcessedFund(
-            name=fund_name,
-            aum=aum,
-            holdings=processed_holdings
-        )
+        return None
     
-    def _process_single_holding(self, holding: Dict) -> ProcessedHolding:
-        """Process a single holding into structured data."""
-        company_name = self._normalize_company_name(holding.get("company_name", ""))
-        percentage = self._parse_percentage(holding.get("allocation_percentage", ""))
-        rank = holding.get("rank", 0)
-        
-        return ProcessedHolding(
-            company_name=company_name,
-            allocation_percentage=percentage,
-            rank=rank
-        )
-    
-    def _is_valid_holding(self, holding: ProcessedHolding) -> bool:
-        """Check if a holding should be included in analysis."""
-        if not holding.company_name:
-            return False
-        return holding.company_name.upper() not in self.excluded_holdings
-    
-    def _normalize_company_name(self, name: str) -> str:
-        """Normalize company name for consistent analysis."""
-        if not name:
-            return ""
-        
-        # Remove extra whitespace and normalize case
-        normalized = re.sub(r'\s+', ' ', name.strip())
-        return normalized.title()
+    def _is_excluded_holding(self, company_name: str, excluded_holdings: set) -> bool:
+        """Check if a holding should be excluded from analysis."""
+        company_upper = company_name.upper()
+        return any(excluded.upper() in company_upper for excluded in excluded_holdings)
     
     def _parse_percentage(self, percentage_str: str) -> float:
         """Parse percentage string to float value."""
         try:
-            # Remove % sign and convert to float
-            clean_str = str(percentage_str).replace('%', '').strip()
+            # Remove % sign and any whitespace
+            clean_str = re.sub(r'[%\s]', '', percentage_str)
             return float(clean_str)
         except (ValueError, TypeError):
             return 0.0

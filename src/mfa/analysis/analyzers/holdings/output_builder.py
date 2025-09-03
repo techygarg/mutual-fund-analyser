@@ -1,101 +1,70 @@
 """
-Holdings analysis output builder.
+Holdings output builder with simplified interface.
 
-This module builds the final output structure for holdings analysis,
-including rankings and common holdings identification.
+This module builds structured output for holdings analysis results.
 """
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
 from .aggregator import AggregatedData
-from .data_processor import ProcessedFund
 
 
 class HoldingsOutputBuilder:
     """Builds structured output for holdings analysis."""
     
-    def __init__(self, params: Dict[str, Any]):
-        self.max_companies = params.get("max_companies_in_results", 100)
+    def __init__(self):
+        """Initialize builder - parameters passed per call."""
+        pass
     
-    def build_category_output(self, category: str, aggregated_data: AggregatedData, 
-                            processed_funds: List[ProcessedFund]) -> Dict[str, Any]:
-        """Build the complete output structure for a category."""
+    def build_category_output(self, category: str, aggregated_data: AggregatedData, params: Any) -> Dict[str, Any]:
+        """
+        Build the complete output structure for a category.
         
-        # Build fund references
+        Args:
+            category: Category name (e.g., "largeCap")
+            aggregated_data: Aggregated holdings data
+            params: Analysis parameters
+            
+        Returns:
+            Complete analysis output dictionary
+        """
+        max_companies = getattr(params, 'max_companies_in_results', 100) if params else 100
+        
+        # Build fund references from aggregated data
         funds = [
-            {"name": fund.name, "aum": fund.aum}
-            for fund in processed_funds
+            {"name": fund_info["name"], "aum": fund_info["aum"]}
+            for fund_info in aggregated_data.funds_info.values()
         ]
         
-        # Sort companies by different criteria
-        companies_by_fund_count = self._sort_by_fund_count(aggregated_data.companies)
-        companies_by_total_weight = self._sort_by_total_weight(aggregated_data.companies)
-        common_in_all_funds = self._find_common_companies(aggregated_data.companies, len(processed_funds))
+        # Sort companies by fund count (descending) and weight
+        sorted_companies = sorted(
+            aggregated_data.companies.values(),
+            key=lambda c: (-c.fund_count, -c.total_weight)
+        )
+        
+        # Limit to max companies
+        if max_companies > 0:
+            sorted_companies = sorted_companies[:max_companies]
+        
+        # Build company output
+        companies = []
+        for company_data in sorted_companies:
+            companies.append({
+                "name": company_data.name,
+                "fund_count": company_data.fund_count,
+                "total_weight": round(company_data.total_weight, 2),
+                "average_weight": round(company_data.average_weight, 2),
+                "sample_funds": company_data.sample_funds
+            })
         
         return {
             "category": category,
-            "total_files": len(processed_funds),
-            "total_funds": len(aggregated_data.funds),
-            "unique_companies": len(aggregated_data.companies),
+            "summary": {
+                "total_funds": len(funds),
+                "total_companies": len(aggregated_data.companies),
+                "companies_in_results": len(companies)
+            },
             "funds": funds,
-            "top_by_fund_count": companies_by_fund_count[:self.max_companies],
-            "top_by_total_weight": companies_by_total_weight[:self.max_companies],
-            "common_in_all_funds": common_in_all_funds
+            "companies": companies
         }
-    
-    def _sort_by_fund_count(self, companies: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Sort companies by fund count (most popular first)."""
-        sorted_companies = sorted(
-            companies.values(),
-            key=lambda x: (-x.fund_count, -x.total_weight, x.name)
-        )
-        
-        return [
-            {
-                "company": company.name,
-                "fund_count": company.fund_count,
-                "total_weight": round(company.total_weight, 2),
-                "avg_weight": round(company.avg_weight, 2),
-                "sample_funds": company.sample_funds
-            }
-            for company in sorted_companies
-        ]
-    
-    def _sort_by_total_weight(self, companies: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Sort companies by total weight (highest allocation first)."""
-        sorted_companies = sorted(
-            companies.values(),
-            key=lambda x: (-x.total_weight, -x.fund_count, x.name)
-        )
-        
-        return [
-            {
-                "company": company.name,
-                "fund_count": company.fund_count,
-                "total_weight": round(company.total_weight, 2),
-                "avg_weight": round(company.avg_weight, 2),
-                "sample_funds": company.sample_funds
-            }
-            for company in sorted_companies
-        ]
-    
-    def _find_common_companies(self, companies: Dict[str, Any], total_funds: int) -> List[Dict[str, Any]]:
-        """Find companies that appear in all funds."""
-        common_companies = [
-            company for company in companies.values()
-            if company.fund_count == total_funds
-        ]
-        
-        # Sort by total weight
-        common_companies.sort(key=lambda x: (-x.total_weight, x.name))
-        
-        return [
-            {
-                "company": company.name,
-                "fund_count": company.fund_count,
-                "total_weight": round(company.total_weight, 2),
-                "avg_weight": round(company.avg_weight, 2)
-            }
-            for company in common_companies
-        ]
