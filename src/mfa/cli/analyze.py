@@ -13,36 +13,26 @@ from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Mutual Fund Analyzer - Extract and analyze fund holdings",
-        prog="mfa-analyze"
+        description="Mutual Fund Analyzer - Extract and analyze fund holdings", prog="mfa-analyze"
     )
     parser.add_argument(
-        "analysis_type",
-        help="Analysis type to run (e.g., 'holdings')"
+        "analysis_type", 
+        nargs="?", 
+        help="Analysis type to run (e.g., 'holdings'). Required unless using --list or --status."
     )
     parser.add_argument(
-        "--category", "-c",
-        help="Fund category to analyze (largeCap, midCap, smallCap)"
+        "--category", "-c", help="Fund category to analyze (largeCap, midCap, smallCap)"
     )
     parser.add_argument(
-        "--date", "-d",
-        help="Date for analysis (YYYYMMDD format). Defaults to today."
+        "--date", "-d", help="Date for analysis (YYYYMMDD format). Defaults to today."
     )
     parser.add_argument(
-        "--list", "-l",
-        action="store_true",
-        help="List available analysis types and exit"
+        "--list", "-l", action="store_true", help="List available analysis types and exit"
     )
     parser.add_argument(
-        "--status", "-s",
-        action="store_true",
-        help="Show current analysis configuration and exit"
+        "--status", "-s", action="store_true", help="Show current analysis configuration and exit"
     )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     return parser.parse_args()
 
 
@@ -69,6 +59,7 @@ def main() -> None:
         print(f"\n❌ Failed to initialize Mutual Fund Analyzer: {e}")
         print("💡 Check your configuration and try again.")
         import sys
+
         sys.exit(1)
 
     # Handle informational commands
@@ -77,7 +68,9 @@ def main() -> None:
         analyses = orchestrator.list_available_analyses()
         for name in analyses:
             print(f"  • {name}")
-        print(f"\n💡 Run 'mfa-analyze {analyses[0] if analyses else 'analysis-type'}' to start analysis")
+        print(
+            f"\n💡 Run 'mfa-analyze {analyses[0] if analyses else 'analysis-type'}' to start analysis"
+        )
         return
 
     if args.status:
@@ -91,6 +84,13 @@ def main() -> None:
             print(f"  ❌ Could not retrieve status: {e}")
         return
 
+    # Validate analysis_type is provided for actual analysis
+    if not args.analysis_type:
+        print("❌ Error: analysis_type is required when not using --list or --status")
+        print("💡 Use 'mfa-analyze --help' for usage information")
+        import sys
+        sys.exit(1)
+
     # Main analysis execution
     try:
         print("🚀 Starting Mutual Fund Analysis...")
@@ -98,8 +98,7 @@ def main() -> None:
             print(f"📂 Category: {args.category}")
         if args.date:
             print(f"📅 Date: {args.date}")
-        if args.analysis_type:
-            print(f"🔍 Analysis: {args.analysis_type}")
+        print(f"🔍 Analysis: {args.analysis_type}")
 
         orchestrator.run_analysis(args.analysis_type, args.date)
 
