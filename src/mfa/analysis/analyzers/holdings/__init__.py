@@ -9,8 +9,8 @@ This package contains all components for mutual fund holdings analysis:
 """
 
 from .holdings_analyzer import HoldingsAnalyzer
-from .data_processor import HoldingsDataProcessor
-from .aggregator import HoldingsAggregator
+from .data_processor import HoldingsDataProcessor, ProcessedFund, ProcessedHolding
+from .aggregator import HoldingsAggregator, AggregatedData, CompanyData
 from .output_builder import HoldingsOutputBuilder
 
 __all__ = [
@@ -18,4 +18,9 @@ __all__ = [
     "HoldingsDataProcessor",
     "HoldingsAggregator",
     "HoldingsOutputBuilder",
+    # Data models
+    "ProcessedFund",
+    "ProcessedHolding",
+    "AggregatedData",
+    "CompanyData",
 ]
