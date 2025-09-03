@@ -91,10 +91,14 @@ class PlaywrightScraper:
         )
         self._own = session is None
 
-    def scrape(self, url: str, max_holdings: int = 10, storage_config: dict | None = None) -> dict[str, Any]:  # pragma: no cover - abstract by convention
+    def scrape(
+        self, url: str, max_holdings: int = 10, storage_config: dict | None = None
+    ) -> dict[str, Any]:  # pragma: no cover - abstract by convention
         raise NotImplementedError
 
-    def scrape_many(self, urls: Iterable[str], max_holdings: int = 10, storage_config: dict | None = None) -> list[dict[str, Any]]:
+    def scrape_many(
+        self, urls: Iterable[str], max_holdings: int = 10, storage_config: dict | None = None
+    ) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
         opened = False
         if self._own:
@@ -277,7 +281,7 @@ class PlaywrightScraper:
         rank = 1
         # Skip header row if present
         start_index = 1 if len(rows) > 0 else 0
-        for r in rows[start_index:max_holdings + 10]:  # Small buffer for headers/invalid rows
+        for r in rows[start_index : max_holdings + 10]:  # Small buffer for headers/invalid rows
             # Get cell locators/handles
             cells: list[Any] = []
             if hasattr(r, "locator"):
@@ -326,7 +330,9 @@ class PlaywrightScraper:
                     break
         return res
 
-    def parse_holdings_from_any_table(self, page: Page, max_holdings: int = 10) -> list[dict[str, Any]]:
+    def parse_holdings_from_any_table(
+        self, page: Page, max_holdings: int = 10
+    ) -> list[dict[str, Any]]:
         # Look for the first few tables near the Top holdings section, then parse
         try:
             containers = [

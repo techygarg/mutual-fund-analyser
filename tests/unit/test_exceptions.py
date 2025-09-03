@@ -1,29 +1,27 @@
 """Unit tests for custom exception handling."""
 
-import pytest
-
 from mfa.core.exceptions import (
-    MFAError,
-    ConfigurationError,
-    ScrapingError,
     AnalysisError,
-    StorageError,
-    OrchestrationError,
-    ValidationError,
-    NetworkError,
-    ParsingError,
     BrowserError,
-    FileNotFoundError,
-    FilePermissionError,
-    PathGenerationError,
+    ConfigurationError,
     ConfigValidationError,
     DataProcessingError,
     FactoryError,
+    FileNotFoundError,
+    FilePermissionError,
+    MFAError,
+    NetworkError,
+    OrchestrationError,
+    ParsingError,
+    PathGenerationError,
     RequirementError,
+    ScrapingError,
+    StorageError,
+    ValidationError,
+    create_analysis_error,
     create_config_error,
     create_scraping_error,
     create_storage_error,
-    create_analysis_error,
 )
 
 
@@ -202,9 +200,7 @@ class TestExceptionFactories:
     def test_create_scraping_error(self):
         """Test create_scraping_error factory function."""
         error = create_scraping_error(
-            "Scraping failed",
-            url="https://example.com",
-            fund_name="Test Fund"
+            "Scraping failed", url="https://example.com", fund_name="Test Fund"
         )
 
         assert isinstance(error, ScrapingError)
@@ -222,9 +218,7 @@ class TestExceptionFactories:
     def test_create_storage_error(self):
         """Test create_storage_error factory function."""
         error = create_storage_error(
-            "Storage failed",
-            file_path="/test/file.json",
-            operation="save"
+            "Storage failed", file_path="/test/file.json", operation="save"
         )
 
         assert isinstance(error, StorageError)
@@ -242,9 +236,7 @@ class TestExceptionFactories:
     def test_create_analysis_error(self):
         """Test create_analysis_error factory function."""
         error = create_analysis_error(
-            "Analysis failed",
-            analysis_type="holdings",
-            category="largeCap"
+            "Analysis failed", analysis_type="holdings", category="largeCap"
         )
 
         assert isinstance(error, AnalysisError)
@@ -286,16 +278,18 @@ class TestExceptionContextHandling:
             "analysis_type": "holdings",
             "category": "largeCap",
             "file_count": 5,
-            "error_code": "VALIDATION_FAILED"
+            "error_code": "VALIDATION_FAILED",
         }
         error = MFAError("Processing failed", context)
 
-        context_str = ", ".join([
-            "analysis_type=holdings",
-            "category=largeCap",
-            "file_count=5",
-            "error_code=VALIDATION_FAILED"
-        ])
+        context_str = ", ".join(
+            [
+                "analysis_type=holdings",
+                "category=largeCap",
+                "file_count=5",
+                "error_code=VALIDATION_FAILED",
+            ]
+        )
         expected_msg = f"Processing failed [{context_str}]"
         assert str(error) == expected_msg
 
@@ -304,7 +298,7 @@ class TestExceptionContextHandling:
         context = {
             "path": "/usr/local/bin/python",
             "url": "https://example.com/test?param=value",
-            "message": "Error: something went wrong!"
+            "message": "Error: something went wrong!",
         }
         error = MFAError("Operation failed", context)
 

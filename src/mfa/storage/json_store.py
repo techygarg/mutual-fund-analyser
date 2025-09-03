@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 
-from mfa.core.exceptions import StorageError, create_storage_error
+from mfa.core.exceptions import create_storage_error
 from mfa.logging.logger import logger
 
 
@@ -39,10 +39,7 @@ class JsonStore:
             raise create_storage_error(error_msg, str(file_path), "save") from e
 
     @staticmethod
-    def save_with_path(
-        data: dict[str, Any],
-        file_path: Path
-    ) -> None:
+    def save_with_path(data: dict[str, Any], file_path: Path) -> None:
         """
         Save data to a specific file path.
 
@@ -115,7 +112,9 @@ class JsonStore:
             StorageError: When file doesn't exist
         """
         if not JsonStore.exists(file_path):
-            raise create_storage_error(f"File does not exist: {file_path}", str(file_path), "exists")
+            raise create_storage_error(
+                f"File does not exist: {file_path}", str(file_path), "exists"
+            )
 
         return file_path.stat().st_size / 1024
 
@@ -136,7 +135,9 @@ class JsonStore:
 
         missing_keys = [key for key in required_keys if key not in data]
         if missing_keys:
-            raise create_storage_error(f"Missing required keys: {missing_keys}", operation="validate")
+            raise create_storage_error(
+                f"Missing required keys: {missing_keys}", operation="validate"
+            )
 
     @staticmethod
     def _ensure_parent_directory(file_path: Path) -> None:
@@ -178,5 +179,3 @@ class JsonStore:
                 return True
         except (PermissionError, OSError):
             return False
-
-

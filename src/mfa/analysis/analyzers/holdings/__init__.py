@@ -8,9 +8,9 @@ This package contains all components for mutual fund holdings analysis:
 - HoldingsOutputBuilder: Builds final output format
 """
 
-from .holdings_analyzer import HoldingsAnalyzer
+from .aggregator import AggregatedData, CompanyData, HoldingsAggregator
 from .data_processor import HoldingsDataProcessor, ProcessedFund, ProcessedHolding
-from .aggregator import HoldingsAggregator, AggregatedData, CompanyData
+from .holdings_analyzer import HoldingsAnalyzer
 from .output_builder import HoldingsOutputBuilder
 
 __all__ = [

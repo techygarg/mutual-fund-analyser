@@ -8,7 +8,6 @@ import pytest
 import yaml
 
 from mfa.config.settings import ConfigProvider, create_config_provider
-from mfa.config.models import MFAConfig, AnalysisConfig, DataRequirementsConfig, AnalysisParamsConfig
 from mfa.core.exceptions import ConfigurationError
 
 
@@ -19,20 +18,14 @@ class TestConfigProvider:
     def sample_config_data(self) -> dict:
         """Sample configuration data for testing."""
         return {
-            "paths": {
-                "output_dir": "outputs/extracted_json",
-                "analysis_dir": "outputs/analysis"
-            },
+            "paths": {"output_dir": "outputs/extracted_json", "analysis_dir": "outputs/analysis"},
             "scraping": {
                 "headless": True,
                 "timeout_seconds": 30,
                 "delay_between_requests": 1.0,
-                "save_extracted_json": True
+                "save_extracted_json": True,
             },
-            "output": {
-                "filename_prefix": "coin_",
-                "include_date_in_folder": True
-            },
+            "output": {"filename_prefix": "coin_", "include_date_in_folder": True},
             "analyses": {
                 "holdings": {
                     "enabled": True,
@@ -41,17 +34,17 @@ class TestConfigProvider:
                         "scraping_strategy": "categories",
                         "categories": {
                             "largeCap": ["https://example.com/large-cap"],
-                            "midCap": ["https://example.com/mid-cap"]
-                        }
+                            "midCap": ["https://example.com/mid-cap"],
+                        },
                     },
                     "params": {
                         "max_holdings": 10,
                         "max_companies_in_results": 100,
                         "max_sample_funds_per_company": 5,
-                        "exclude_from_analysis": ["CASH", "TREPS"]
-                    }
+                        "exclude_from_analysis": ["CASH", "TREPS"],
+                    },
                 }
-            }
+            },
         }
 
     def test_create_config_provider_creates_instance(self):
@@ -62,12 +55,17 @@ class TestConfigProvider:
             # Create a minimal config
             config_data = {
                 "paths": {"output_dir": "outputs", "analysis_dir": "analysis"},
-                            "scraping": {"headless": False, "timeout_seconds": 10, "delay_between_requests": 0.5, "save_extracted_json": True},
-            "output": {"filename_prefix": "coin_", "include_date_in_folder": True},
-            "analyses": {}
+                "scraping": {
+                    "headless": False,
+                    "timeout_seconds": 10,
+                    "delay_between_requests": 0.5,
+                    "save_extracted_json": True,
+                },
+                "output": {"filename_prefix": "coin_", "include_date_in_folder": True},
+                "analyses": {},
             }
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(config_data, f)
 
             provider = create_config_provider(config_path)
@@ -80,7 +78,7 @@ class TestConfigProvider:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(sample_config_data, f)
 
             provider = ConfigProvider(config_path)
@@ -118,11 +116,11 @@ class TestConfigProvider:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(incomplete_config, f)
 
             # Should fail during Pydantic validation
-            with pytest.raises(Exception):  # Pydantic validation error
+            with pytest.raises(ValueError):  # Pydantic validation error
                 ConfigProvider(config_path)
 
     def test_get_enabled_analyses_filters_correctly(self, sample_config_data: dict):
@@ -132,13 +130,13 @@ class TestConfigProvider:
             "enabled": False,
             "type": "disabled-type",
             "data_requirements": {"scraping_strategy": "categories", "categories": {}},
-            "params": {"max_holdings": 5}
+            "params": {"max_holdings": 5},
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(sample_config_data, f)
 
             provider = ConfigProvider(config_path)
@@ -154,7 +152,7 @@ class TestConfigProvider:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(sample_config_data, f)
 
             provider = ConfigProvider(config_path)
@@ -171,27 +169,21 @@ class TestConfigProvider:
     def test_config_provider_handles_environment_variables(self):
         """Test ConfigProvider resolves environment variables in config."""
         config_data = {
-            "paths": {
-                "output_dir": "${TEST_OUTPUT_DIR}",
-                "analysis_dir": "outputs/analysis"
-            },
+            "paths": {"output_dir": "${TEST_OUTPUT_DIR}", "analysis_dir": "outputs/analysis"},
             "scraping": {
                 "headless": False,
                 "timeout_seconds": 30,
                 "delay_between_requests": 1.0,
-                "save_extracted_json": True
+                "save_extracted_json": True,
             },
-            "output": {
-                "filename_prefix": "coin_",
-                "include_date_in_folder": True
-            },
-            "analyses": {}
+            "output": {"filename_prefix": "coin_", "include_date_in_folder": True},
+            "analyses": {},
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(config_data, f)
 
             with patch.dict("os.environ", {"TEST_OUTPUT_DIR": "/custom/output/path"}):
@@ -203,27 +195,21 @@ class TestConfigProvider:
     def test_config_provider_handles_missing_env_vars(self):
         """Test ConfigProvider handles missing environment variables gracefully."""
         config_data = {
-            "paths": {
-                "output_dir": "${MISSING_VAR}",
-                "analysis_dir": "outputs/analysis"
-            },
+            "paths": {"output_dir": "${MISSING_VAR}", "analysis_dir": "outputs/analysis"},
             "scraping": {
                 "headless": False,
                 "timeout_seconds": 30,
                 "delay_between_requests": 1.0,
-                "save_extracted_json": True
+                "save_extracted_json": True,
             },
-            "output": {
-                "filename_prefix": "coin_",
-                "include_date_in_folder": True
-            },
-            "analyses": {}
+            "output": {"filename_prefix": "coin_", "include_date_in_folder": True},
+            "analyses": {},
         }
 
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "test_config.yaml"
 
-            with open(config_path, 'w') as f:
+            with open(config_path, "w") as f:
                 yaml.dump(config_data, f)
 
             provider = ConfigProvider(config_path)

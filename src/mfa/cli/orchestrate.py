@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from mfa.config.settings import ConfigProvider
+from mfa.config.settings import create_config_provider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
@@ -19,7 +19,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    config_provider = ConfigProvider.get_instance()
+    config_provider = create_config_provider()
     config = config_provider.get_config()
     config.ensure_directories()
     setup_logging("outputs")
@@ -27,7 +27,7 @@ def main() -> None:
     args = _parse_args()
     analysis_type = (args.analysis or "").strip() if args else None
 
-    orchestrator = AnalysisOrchestrator()
+    orchestrator = AnalysisOrchestrator(config_provider)
     try:
         orchestrator.run_analysis(analysis_type, args.date)
         print("\n🎉 Analysis orchestration completed successfully!")

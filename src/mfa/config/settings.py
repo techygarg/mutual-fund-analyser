@@ -3,13 +3,14 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
 
 from mfa.core.exceptions import ConfigurationError, create_config_error
-from .models import MFAConfig, AnalysisConfig
+
+from .models import AnalysisConfig, MFAConfig
 
 
 class ConfigProvider:
@@ -20,7 +21,7 @@ class ConfigProvider:
     and flexibility.
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """
         Initialize configuration provider.
 
@@ -41,7 +42,9 @@ class ConfigProvider:
             load_dotenv(env_path)
 
         if not self.config_path.exists():
-            raise create_config_error(f"Configuration file not found: {self.config_path}", str(self.config_path))
+            raise create_config_error(
+                f"Configuration file not found: {self.config_path}", str(self.config_path)
+            )
 
         with open(self.config_path, encoding="utf-8") as fh:
             raw = yaml.safe_load(fh) or {}
@@ -72,7 +75,7 @@ class ConfigProvider:
             raise ConfigurationError("Configuration not loaded - call load_config() first")
         return self._typed_config
 
-    def get_analysis_config(self, analysis_name: str) -> Optional[AnalysisConfig]:
+    def get_analysis_config(self, analysis_name: str) -> AnalysisConfig | None:
         """Get configuration for a specific analysis."""
         return self.get_config().get_analysis(analysis_name)
 
@@ -82,7 +85,7 @@ class ConfigProvider:
 
 
 # Factory function for backwards compatibility during transition
-def create_config_provider(config_path: Optional[Path] = None) -> ConfigProvider:
+def create_config_provider(config_path: Path | None = None) -> ConfigProvider:
     """
     Factory function to create a ConfigProvider instance.
 
@@ -94,6 +97,7 @@ def create_config_provider(config_path: Optional[Path] = None) -> ConfigProvider
 
 # For backwards compatibility during transition - will be removed
 _default_provider: ConfigProvider | None = None
+
 
 def get_default_config_provider() -> ConfigProvider:
     """Get default config provider (temporary compatibility function)."""
