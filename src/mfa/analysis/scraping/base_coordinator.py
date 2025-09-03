@@ -1,8 +1,8 @@
 """
-Base scraping coordinator with common functionality.
+Base scraping coordinator with direct config access.
 
 This module provides shared scraping functionality that can be reused
-across different scraping strategies.
+across different scraping strategies with simplified interfaces.
 """
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 
 
 class BaseScrapingCoordinator(ABC):
-    """Base class for scraping coordinators with common functionality."""
+    """Base class for scraping coordinators with direct config access."""
     
     def __init__(self):
-        self.config = ConfigProvider.get_instance()
+        self.config_provider = ConfigProvider.get_instance()
         self._scraper = None
     
     def _get_scraper(self) -> ZerodhaCoinScraper:
@@ -34,8 +34,8 @@ class BaseScrapingCoordinator(ABC):
     
     def _get_scraping_settings(self) -> Dict[str, Any]:
         """Get scraping settings from config."""
-        # New type-safe way - no more string keys!
-        scraping_config = self.config.get_config().scraping
+        config = self.config_provider.get_config()
+        scraping_config = config.scraping
         return {
             "headless": scraping_config.headless,
             "timeout_seconds": scraping_config.timeout_seconds,
@@ -43,19 +43,21 @@ class BaseScrapingCoordinator(ABC):
             "save_extracted_json": scraping_config.save_extracted_json,
         }
     
-    def _scrape_urls_with_delay(self, urls: List[str], max_holdings: int = 10, category: str = "", analysis_config: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def _scrape_urls_with_delay(
+        self, 
+        urls: List[str], 
+        max_holdings: int, 
+        category: str, 
+        storage_config: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
         """
         Scrape a list of URLs with proper delays between requests.
         
-        This method now uses storage_config approach with hybrid template support,
-        delegating all path generation to JSONStore.
+        Simplified interface - storage_config contains all needed info.
         """
         scraper = self._get_scraper()
         results = []
         settings = self._get_scraping_settings()
-        
-        # Build storage configuration once with template support
-        storage_config = self._build_storage_config(category, analysis_config) if settings["save_extracted_json"] else None
         
         for i, url in enumerate(urls):
             try:
@@ -80,36 +82,6 @@ class BaseScrapingCoordinator(ABC):
         
         return results
     
-    def _build_storage_config(self, category: str, analysis_config: Dict[str, Any] = None) -> Dict[str, Any]:
-        """
-        Build storage configuration for scraped data with hybrid template support.
-        
-        This supports both smart defaults and custom path templates,
-        delegating all path logic to JSONStore.
-        """
-        config = self.config.get_config()
-        
-        storage_config = {
-            "should_save": True,
-            "base_dir": config.paths.output_dir,
-            "category": category,
-            "filename_prefix": config.output.filename_prefix,
-            "analysis_type": "default"  # Will be overridden by specific coordinators
-        }
-        
-        # Add template if analysis has custom path configuration
-        if analysis_config:
-            if analysis_config.get("path_template"):
-                storage_config["path_template"] = analysis_config["path_template"]
-            
-            # Extract analysis type from config
-            if analysis_config.get("type"):
-                # Convert "fund-holdings" -> "holdings", "portfolio-composition" -> "portfolio"
-                analysis_type = analysis_config["type"].split("-")[-1]
-                storage_config["analysis_type"] = analysis_type
-        
-        return storage_config
-    
     def _log_scraping_start(self, strategy: str, total_urls: int) -> None:
         """Log the start of scraping process."""
         logger.info(f"🕷️  Starting {strategy} scraping for {total_urls} URLs")
@@ -117,5 +89,3 @@ class BaseScrapingCoordinator(ABC):
     def _log_scraping_complete(self, strategy: str, successful: int, total: int) -> None:
         """Log the completion of scraping process."""
         logger.info(f"✅ {strategy} scraping completed: {successful}/{total} URLs successful")
-    
-

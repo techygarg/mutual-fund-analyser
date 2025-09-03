@@ -6,6 +6,11 @@ from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import setup_logging
 from mfa.orchestration.analysis_orchestrator import AnalysisOrchestrator
 
+# Import analyzers and coordinators to ensure they get registered
+from mfa.analysis.analyzers.holdings_analyzer import HoldingsAnalyzer
+from mfa.analysis.scraping.category_coordinator import CategoryScrapingCoordinator
+from mfa.analysis.scraping.targeted_coordinator import TargetedScrapingCoordinator
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run MFA analysis")
@@ -13,17 +18,20 @@ def _parse_args() -> argparse.Namespace:
                        help="Analysis type to run (e.g., 'holdings'). If not specified, runs all enabled analyses.")
     parser.add_argument("--date", help="Date (YYYYMMDD) for analysis")
     parser.add_argument("--list", action="store_true", help="List available analysis types")
-    parser.add_argument("--status", action="store_true", help="Show status of all analyses")
+    parser.add_argument("--status", action="store_true", help="Show analysis status")
     return parser.parse_args()
 
 
 def main() -> None:
+    setup_logging()
+    
+    args = _parse_args()
+    
+    # Ensure directories exist
     config_provider = ConfigProvider.get_instance()
     config = config_provider.get_config()
     config.ensure_directories()
-    setup_logging("outputs")
-
-    args = _parse_args()
+    
     orchestrator = AnalysisOrchestrator()
     
     if args.list:

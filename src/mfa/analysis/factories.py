@@ -2,28 +2,33 @@
 Factory classes for creating analyzers and scraping coordinators.
 
 This module implements the factory pattern to create appropriate instances
-based on configuration, enabling easy extension with new analysis types.
+with direct config access, enabling easy extension with new analysis types.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Type
+from typing import List, Type
 
 from .interfaces import IAnalyzer, IScrapingCoordinator
 
 
 class AnalyzerFactory:
-    """Factory for creating analyzer instances."""
+    """Factory for creating analyzer instances with direct config access."""
     
-    _analyzers: Dict[str, Type[IAnalyzer]] = {}
+    _analyzers: dict[str, Type[IAnalyzer]] = {}
     
     @classmethod
-    def create_analyzer(cls, analysis_type: str, config: Dict[str, Any]) -> IAnalyzer:
-        """Create an analyzer instance for the given type."""
+    def create_analyzer(cls, analysis_type: str) -> IAnalyzer:
+        """
+        Create an analyzer instance for the given type.
+        
+        Analyzers now read config directly from ConfigProvider, eliminating
+        the need to pass config through the factory.
+        """
         if analysis_type not in cls._analyzers:
             raise ValueError(f"Unknown analysis type: {analysis_type}")
         
         analyzer_class = cls._analyzers[analysis_type]
-        return analyzer_class(config)
+        return analyzer_class()  # No config parameter needed
     
     @classmethod
     def register_analyzer(cls, analysis_type: str, analyzer_class: Type[IAnalyzer]) -> None:
@@ -39,7 +44,7 @@ class AnalyzerFactory:
 class ScrapingCoordinatorFactory:
     """Factory for creating scraping coordinator instances."""
     
-    _coordinators: Dict[str, Type[IScrapingCoordinator]] = {}
+    _coordinators: dict[str, Type[IScrapingCoordinator]] = {}
     
     @classmethod
     def create_coordinator(cls, strategy: str) -> IScrapingCoordinator:
