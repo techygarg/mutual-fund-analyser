@@ -22,22 +22,22 @@ class TestHoldingsAnalyzer:
 
         # Mock config structure
         mock_config = Mock()
-        mock_config.analyses = {
-            "holdings": Mock(
-                data_requirements=Mock(
-                    categories={
-                        "largeCap": ["https://coin.zerodha.com/mf/fund/large-cap-fund"],
-                        "midCap": ["https://coin.zerodha.com/mf/fund/mid-cap-fund"],
-                    }
-                ),
-                params=Mock(
-                    max_holdings=10,
-                    max_companies_in_results=100,
-                    max_sample_funds_per_company=5,
-                    exclude_from_analysis=["CASH", "TREPS"],
-                ),
-            )
+
+        # Mock the get_analysis method
+        mock_holdings_config = Mock()
+        mock_holdings_config.data_requirements = Mock()
+        mock_holdings_config.data_requirements.categories = {
+            "largeCap": ["https://coin.zerodha.com/mf/fund/large-cap-fund"],
+            "midCap": ["https://coin.zerodha.com/mf/fund/mid-cap-fund"],
         }
+        mock_holdings_config.params = Mock(
+            max_holdings=10,
+            max_companies_in_results=100,
+            max_sample_funds_per_company=5,
+            exclude_from_analysis=["CASH", "TREPS"],
+        )
+
+        mock_config.get_analysis.return_value = mock_holdings_config
 
         # Add paths to prevent mock object directory creation
         mock_config.paths = Mock()
@@ -167,7 +167,8 @@ class TestHoldingsAnalyzer:
         """Test analyzer uses configuration values during processing."""
         # Setup config to exclude specific holdings
         mock_config = mock_config_provider.get_config.return_value
-        mock_config.analyses["holdings"].params.exclude_from_analysis = ["CASH", "TREPS"]
+        mock_holdings_config = mock_config.get_analysis.return_value
+        mock_holdings_config.params.exclude_from_analysis = ["CASH", "TREPS"]
 
         analyzer = HoldingsAnalyzer(mock_config_provider)
 

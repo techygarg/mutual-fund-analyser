@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
+from mfa.core.exceptions import ConfigurationError
 
 from .data_processor import ProcessedFund
 
@@ -60,8 +61,16 @@ class HoldingsAggregator:
         """
         # Read configuration directly
         config = self.config_provider.get_config()
-        holdings_config = config.analyses["holdings"]
-        max_samples = holdings_config.params.max_sample_funds_per_company or 5
+        holdings_config = config.get_analysis("holdings")
+        if holdings_config is None:
+            raise ConfigurationError(
+                "Holdings analysis configuration not found",
+                {"analysis": "holdings"},
+            )
+        max_samples_config = holdings_config.params.max_sample_funds_per_company
+        max_samples = max_samples_config if isinstance(max_samples_config, int) else 5
+        if isinstance(max_samples, int) and max_samples < 0:
+            max_samples = 0
 
         company_to_funds: defaultdict[str, set] = defaultdict(set)
         company_total_weights: defaultdict[str, float] = defaultdict(float)

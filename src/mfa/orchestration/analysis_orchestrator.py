@@ -39,19 +39,16 @@ class AnalysisOrchestrator:
         self.config_provider = config_provider
 
     def run_analysis(
-        self, 
-        analysis_type: str | None = None, 
-        date: str | None = None, 
-        analysis_only: bool = False
+        self, analysis_type: str | None = None, date: str | None = None, analysis_only: bool = False
     ) -> None:
         """
         Run analysis with simplified orchestration.
 
         Components read their own config directly, eliminating parameter passing.
-        
+
         Args:
             analysis_type: Specific analysis to run, or None for all enabled
-            date: Date for analysis, or None for today  
+            date: Date for analysis, or None for today
             analysis_only: If True, skip scraping and use existing data only
         """
         logger.info("🚀 Starting analysis orchestration")
@@ -84,7 +81,11 @@ class AnalysisOrchestrator:
             self._run_single_analysis(analysis_id, analysis_config, date, analysis_only)
 
     def _run_single_analysis(
-        self, analysis_id: str, analysis_config: AnalysisConfig, date: str | None, analysis_only: bool = False
+        self,
+        analysis_id: str,
+        analysis_config: AnalysisConfig,
+        date: str | None,
+        analysis_only: bool = False,
     ) -> None:
         """
         Run a single analysis with simplified workflow.
@@ -100,7 +101,7 @@ class AnalysisOrchestrator:
             # 1. Create analyzer with injected config provider
             analyzer = AnalyzerFactory.create_analyzer(analysis_config.type, self.config_provider)
 
-            # 2. Get data requirements (analyzer reads config directly)  
+            # 2. Get data requirements (analyzer reads config directly)
             requirements = analyzer.get_data_requirements()
             logger.info(
                 f"📋 Data requirements: {requirements.strategy.value} strategy, "
@@ -180,50 +181,60 @@ class AnalysisOrchestrator:
 
         return status
 
-    def _discover_existing_data_files(self, requirements: DataRequirement, date: str | None) -> dict[str, Any]:
+    def _discover_existing_data_files(
+        self, requirements: DataRequirement, date: str | None
+    ) -> dict[str, Any]:
         """
         Discover existing scraped data files for analysis-only mode.
-        
+
         Args:
             requirements: Data requirements from analyzer
             date: Optional date string for file discovery
-            
+
         Returns:
             Dict with strategy and file_paths for analysis
         """
         from pathlib import Path
-        
+
         config = self.config_provider.get_config()
         date_str = date or self._get_current_date()
-        
-        scraped_data_info = {
+
+        scraped_data_info: dict[str, Any] = {
             "strategy": requirements.strategy.value,
             "data": {},
-            "file_paths": {},
+            "file_paths": dict[str, list[str]](),
         }
-        
+
         if requirements.strategy.value == "categories":
             # Discover files organized by categories
             categories = requirements.metadata.get("categories", {})
-            
-            for category, urls in categories.items():
+
+            for category, _urls in categories.items():
                 category_files = []
                 base_dir = Path(config.paths.output_dir) / date_str / "holdings" / category
-                
+
                 if base_dir.exists():
                     # Find all JSON files in this category directory
                     json_files = list(base_dir.glob("*.json"))
                     category_files = [str(f) for f in json_files]
                     logger.debug(f"📁 Found {len(category_files)} files for category '{category}'")
                 else:
-                    logger.warning(f"📁 No data directory found for category '{category}': {base_dir}")
-                
+                    logger.warning(
+                        f"📁 No data directory found for category '{category}': {base_dir}"
+                    )
+
                 scraped_data_info["file_paths"][category] = category_files
-                
+
         elif requirements.strategy.value == "targeted_funds":
             # Discover files for targeted strategy
-            base_dir = Path(config.paths.output_dir) / "extracted_json" / date_str / "holdings" / "targeted"
-            
+            base_dir = (
+                Path(config.paths.output_dir)
+                / "extracted_json"
+                / date_str
+                / "holdings"
+                / "targeted"
+            )
+
             if base_dir.exists():
                 json_files = list(base_dir.glob("*.json"))
                 scraped_data_info["file_paths"]["targeted"] = [str(f) for f in json_files]
@@ -231,8 +242,11 @@ class AnalysisOrchestrator:
             else:
                 logger.warning(f"📁 No data directory found for targeted strategy: {base_dir}")
                 scraped_data_info["file_paths"]["targeted"] = []
-        
-        total_files = sum(len(files) for files in scraped_data_info["file_paths"].values())
+
+        file_paths_dict = scraped_data_info["file_paths"]
+        total_files = sum(
+            len(files) for files in file_paths_dict.values() if isinstance(files, list)
+        )
         logger.info(f"📁 Discovered {total_files} existing data files for analysis")
-        
+
         return scraped_data_info

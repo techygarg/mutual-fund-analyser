@@ -12,8 +12,8 @@ from typing import Any
 
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
-from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.scraping.core.playwright_scraper import PlaywrightSession
+from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.storage.path_generator import PathGenerator
 
 
@@ -37,8 +37,7 @@ class BaseScrapingCoordinator:
         if self._session is None:
             settings = self._get_scraping_settings()
             self._session = PlaywrightSession(
-                headless=settings["headless"], 
-                nav_timeout_ms=settings["timeout_seconds"] * 1000
+                headless=settings["headless"], nav_timeout_ms=settings["timeout_seconds"] * 1000
             )
             self._session.open()
         return self._session
@@ -115,10 +114,10 @@ class BaseScrapingCoordinator:
             self._session = None
         self._scraper = None
 
-    def __enter__(self):
+    def __enter__(self) -> BaseScrapingCoordinator:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Context manager exit - ensures session cleanup."""
         self.close_session()

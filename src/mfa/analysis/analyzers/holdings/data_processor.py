@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
+from mfa.core.exceptions import ConfigurationError
 from mfa.logging.logger import logger
 
 
@@ -59,7 +60,12 @@ class HoldingsDataProcessor:
         """
         # Read configuration directly
         config = self.config_provider.get_config()
-        holdings_config = config.analyses["holdings"]
+        holdings_config = config.get_analysis("holdings")
+        if holdings_config is None:
+            raise ConfigurationError(
+                "Holdings analysis configuration not found",
+                {"analysis": "holdings"},
+            )
         excluded_holdings = set(holdings_config.params.exclude_from_analysis or [])
         processed_funds = []
 
@@ -99,8 +105,12 @@ class HoldingsDataProcessor:
                 allocation_str = holding_data.get("allocation_percentage", "0%")
                 allocation_pct = self._parse_percentage(allocation_str)
 
-                # Get rank
-                rank = holding_data.get("rank", 0)
+                # Get rank (coerce to int defensively)
+                raw_rank = holding_data.get("rank", 0)
+                try:
+                    rank = int(raw_rank)
+                except (TypeError, ValueError):
+                    rank = 0
 
                 if company_name and allocation_pct > 0:
                     # Normalize company name to avoid duplicates
@@ -129,53 +139,57 @@ class HoldingsDataProcessor:
     def _normalize_company_name(self, company_name: str) -> str:
         """
         Normalize company name by removing common suffixes and standardizing format.
-        
+
         This helps avoid duplicate companies due to slight name variations.
-        
+
         Args:
             company_name: Raw company name from fund data
-            
+
         Returns:
             Normalized company name
         """
         if not company_name:
             return company_name
-            
+
         # Remove leading/trailing whitespace
         normalized = company_name.strip()
-        
-        # Common suffixes to remove (in order of specificity)
-        suffixes_to_remove = [
-            r'\s+Limited\s*$',           # " Limited"
-            r'\s+Ltd\.?\s*$',            # " Ltd" or " Ltd."
-            r'\s+Pvt\.?\s*$',            # " Pvt" or " Pvt."
-            r'\s+Private\s+Limited\s*$', # " Private Limited" 
-            r'\s+Pvt\.?\s+Ltd\.?\s*$',   # " Pvt Ltd" or " Pvt. Ltd."
-            r'\s+Inc\.?\s*$',            # " Inc" or " Inc."
-            r'\s+Corporation\s*$',       # " Corporation"
-            r'\s+Corp\.?\s*$',           # " Corp" or " Corp."
-            r'\s+Company\s*$',           # " Company"
-            r'\s+Co\.?\s*$',             # " Co" or " Co."
-        ]
-        
-        # Apply suffix removal (case-insensitive)
-        for suffix_pattern in suffixes_to_remove:
-            normalized = re.sub(suffix_pattern, '', normalized, flags=re.IGNORECASE)
-            
-        # Clean up any remaining trailing dots or spaces
-        normalized = re.sub(r'[\.\s]+$', '', normalized)
-        
+
+        # Apply suffix removal using precompiled patterns
+        for pattern in _SUFFIX_PATTERNS:
+            normalized = pattern.sub("", normalized)
+
+        # Clean up any remaining trailing dots or spaces (precompiled)
+        normalized = _TRAILING_DOTS_SPACES_PATTERN.sub("", normalized)
+
         # Ensure we don't return empty string
         if not normalized.strip():
             return company_name
-            
+
         return normalized.strip()
 
     def _parse_percentage(self, percentage_str: str) -> float:
         """Parse percentage string to float value."""
         try:
             # Remove % sign and any whitespace
-            clean_str = re.sub(r"[%\s]", "", percentage_str)
+            clean_str = _PERCENT_WS_PATTERN.sub("", percentage_str)
             return float(clean_str)
         except (ValueError, TypeError):
             return 0.0
+
+
+# Precompiled regex patterns (module-level) for performance
+_SUFFIX_PATTERNS = [
+    re.compile(r"\s+Limited\s*$", re.IGNORECASE),
+    re.compile(r"\s+Ltd\.?\s*$", re.IGNORECASE),
+    re.compile(r"\s+Pvt\.?\s*$", re.IGNORECASE),
+    re.compile(r"\s+Private\s+Limited\s*$", re.IGNORECASE),
+    re.compile(r"\s+Pvt\.?\s+Ltd\.?\s*$", re.IGNORECASE),
+    re.compile(r"\s+Inc\.?\s*$", re.IGNORECASE),
+    re.compile(r"\s+Corporation\s*$", re.IGNORECASE),
+    re.compile(r"\s+Corp\.?\s*$", re.IGNORECASE),
+    re.compile(r"\s+Company\s*$", re.IGNORECASE),
+    re.compile(r"\s+Co\.?\s*$", re.IGNORECASE),
+]
+
+_TRAILING_DOTS_SPACES_PATTERN = re.compile(r"[\.\s]+$")
+_PERCENT_WS_PATTERN = re.compile(r"[%\s]")

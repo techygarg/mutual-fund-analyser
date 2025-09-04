@@ -34,9 +34,10 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument(
-        "--analysis-only", "--no-scrape", 
-        action="store_true", 
-        help="Skip scraping and run analysis on existing data only"
+        "--analysis-only",
+        "--no-scrape",
+        action="store_true",
+        help="Skip scraping and run analysis on existing data only",
     )
     return parser.parse_args()
 
@@ -108,7 +109,7 @@ def main() -> None:
 
         if args.analysis_only:
             print("🔄 Analysis-only mode: skipping scraping")
-        
+
         orchestrator.run_analysis(args.analysis_type, args.date, args.analysis_only)
 
         print("\n🎉 Analysis completed successfully!")
