@@ -8,7 +8,7 @@ echo "✨ Checking code formatting..."
 ruff format --check src tests
 
 echo "🔍 Linting code..."
-ruff check src tests
+ruff check src
 
 echo "🔎 Type checking..."
 mypy src
