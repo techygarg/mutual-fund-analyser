@@ -12,6 +12,7 @@ from typing import Any
 
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
+from mfa.scraping.core.playwright_scraper import PlaywrightSession
 from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
 from mfa.storage.path_generator import PathGenerator
 
@@ -29,14 +30,24 @@ class BaseScrapingCoordinator:
         self.config_provider = config_provider
         self.path_generator = PathGenerator(config_provider)
         self._scraper: ZerodhaCoinScraper | None = None
+        self._session: PlaywrightSession | None = None
 
-    def _get_scraper(self) -> ZerodhaCoinScraper:
-        """Get or create a scraper instance."""
-        if self._scraper is None:
+    def _get_session(self) -> PlaywrightSession:
+        """Get or create a reusable Playwright session."""
+        if self._session is None:
             settings = self._get_scraping_settings()
-            self._scraper = ZerodhaCoinScraper(
+            self._session = PlaywrightSession(
                 headless=settings["headless"], nav_timeout_ms=settings["timeout_seconds"] * 1000
             )
+            self._session.open()
+        return self._session
+
+    def _get_scraper(self) -> ZerodhaCoinScraper:
+        """Get or create a scraper instance with shared session."""
+        if self._scraper is None:
+            # Pass the shared session to the scraper
+            session = self._get_session()
+            self._scraper = ZerodhaCoinScraper(session=session)
         return self._scraper
 
     def _get_scraping_settings(self) -> dict[str, Any]:
@@ -94,3 +105,19 @@ class BaseScrapingCoordinator:
     def _log_scraping_complete(self, strategy: str, successful: int, total: int) -> None:
         """Log the completion of scraping process."""
         logger.info(f"✅ {strategy} scraping completed: {successful}/{total} URLs successful")
+
+    def close_session(self) -> None:
+        """Close the Playwright session and clean up resources."""
+        if self._session is not None:
+            logger.debug("🔒 Closing Playwright session")
+            self._session.close()
+            self._session = None
+        self._scraper = None
+
+    def __enter__(self) -> BaseScrapingCoordinator:
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Context manager exit - ensures session cleanup."""
+        self.close_session()

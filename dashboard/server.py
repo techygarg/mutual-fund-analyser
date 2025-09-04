@@ -67,7 +67,7 @@ def get_data(date: str, category: str) -> JSONResponse:
 
 @app.get("/api/funds")
 def get_funds(date: str, category: str) -> JSONResponse:
-    date_dir = EXTRACTED_ROOT / date / category
+    date_dir = EXTRACTED_ROOT / date / "holdings" / category
     if not date_dir.exists():
         return JSONResponse(content={"funds": []})
     items = []

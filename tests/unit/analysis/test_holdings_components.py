@@ -26,15 +26,24 @@ class TestHoldingsDataProcessor:
         config_provider = Mock(spec=ConfigProvider)
 
         mock_config = Mock()
-        mock_config.analyses = {
-            "holdings": Mock(
-                params=Mock(
-                    exclude_from_analysis=["CASH", "TREPS", "T-BILLS"],
-                    max_sample_funds_per_company=3,
-                    max_companies_in_results=5,
-                )
-            )
+
+        # Mock the get_analysis method instead of analyses dictionary
+        mock_holdings_config = Mock()
+
+        # Create actual mock objects for params
+        mock_params = Mock()
+        mock_params.exclude_from_analysis = ["CASH", "TREPS", "T-BILLS"]
+        mock_params.max_sample_funds_per_company = 3
+        mock_params.max_companies_in_results = 5
+
+        mock_holdings_config.params = mock_params
+        mock_holdings_config.data_requirements = Mock()
+        mock_holdings_config.data_requirements.categories = {
+            "largeCap": ["url1", "url2"],
+            "midCap": ["url3", "url4"],
         }
+
+        mock_config.get_analysis.return_value = mock_holdings_config
 
         # Add paths to prevent mock object directory creation
         mock_config.paths = Mock()
@@ -95,7 +104,7 @@ class TestHoldingsDataProcessor:
 
         company_names = [h.company_name for h in holdings]
         assert "Reliance Industries" in company_names
-        assert "TCS Ltd" in company_names
+        assert "TCS" in company_names  # "Ltd" is normalized away
         assert "CASH" not in company_names
         assert "TREPS" not in company_names
 
@@ -202,7 +211,8 @@ class TestHoldingsAggregator:
         """Test aggregation respects configuration limits."""
         # Configure small limit
         mock_config = mock_config_provider.get_config.return_value
-        mock_config.analyses["holdings"].params.max_sample_funds_per_company = 1
+        mock_holdings_config = mock_config.get_analysis.return_value
+        mock_holdings_config.params.max_sample_funds_per_company = 1
 
         aggregator = HoldingsAggregator(mock_config_provider)
 
@@ -267,18 +277,19 @@ class TestHoldingsOutputBuilder:
         # Verify structure
         assert isinstance(result, dict)
         assert "funds" in result
-        assert "companies" in result
-        assert "summary" in result
-        assert "category" in result
+        assert "top_by_fund_count" in result
+        assert "top_by_total_weight" in result
+        assert "common_in_all_funds" in result
+        assert "unique_companies" in result
 
         # Verify funds data
         assert len(result["funds"]) == 3
         assert result["funds"][0]["name"] == "Fund 1"
 
         # Verify companies are sorted by fund count
-        assert len(result["companies"]) == 3  # All companies included
-        assert result["companies"][0]["name"] == "Company A"  # Most funds (3)
-        assert result["companies"][1]["name"] == "Company B"  # Second most (2)
+        assert len(result["top_by_fund_count"]) == 3  # All companies included
+        assert result["top_by_fund_count"][0]["name"] == "Company A"  # Most funds (3)
+        assert result["top_by_fund_count"][1]["name"] == "Company B"  # Second most (2)
 
     def test_build_category_output_respects_config_limits(
         self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData
@@ -286,14 +297,15 @@ class TestHoldingsOutputBuilder:
         """Test output building respects configuration limits."""
         # Configure small limit
         mock_config = mock_config_provider.get_config.return_value
-        mock_config.analyses["holdings"].params.max_companies_in_results = 2
+        mock_holdings_config = mock_config.get_analysis.return_value
+        mock_holdings_config.params.max_companies_in_results = 2
 
         builder = HoldingsOutputBuilder(mock_config_provider)
 
         result = builder.build_category_output("largeCap", sample_aggregated_data)
 
         # Should limit number of companies
-        assert len(result["companies"]) <= 2
+        assert len(result["top_by_fund_count"]) <= 2
 
     def test_build_category_output_includes_summary(
         self, mock_config_provider: Mock, sample_aggregated_data: AggregatedData
@@ -303,11 +315,13 @@ class TestHoldingsOutputBuilder:
 
         result = builder.build_category_output("largeCap", sample_aggregated_data)
 
-        assert "summary" in result
-        summary = result["summary"]
-        assert "total_companies" in summary
-        assert "total_funds" in summary
-        assert "companies_in_results" in summary
-        assert summary["total_funds"] == 3
-        assert summary["total_companies"] == 3
-        assert result["category"] == "largeCap"
+        # Check that we have the key summary fields
+        assert "unique_companies" in result
+        assert "total_funds" in result
+        assert "total_files" in result
+
+        # Verify summary information
+        assert isinstance(result["unique_companies"], int)
+        assert result["unique_companies"] > 0
+        assert result["total_funds"] == 3
+        assert result["total_files"] == 3

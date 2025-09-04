@@ -95,9 +95,13 @@ class TestFactoryIntegration:
 
         # Mock config structure
         mock_config = Mock()
-        mock_config.analyses = {
-            "holdings": Mock(data_requirements=Mock(categories={"test": ["https://example.com"]}))
-        }
+
+        # Mock the get_analysis method
+        mock_holdings_config = Mock()
+        mock_holdings_config.data_requirements = Mock()
+        mock_holdings_config.data_requirements.categories = {"test": ["https://example.com"]}
+
+        mock_config.get_analysis.return_value = mock_holdings_config
 
         config_provider.get_config.return_value = mock_config
         return config_provider

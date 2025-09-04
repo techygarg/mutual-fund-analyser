@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
+from mfa.core.exceptions import ConfigurationError
 from mfa.logging.logger import logger
 from mfa.storage.json_store import JsonStore
 from mfa.storage.path_generator import PathGenerator
@@ -51,20 +52,30 @@ class HoldingsAnalyzer(BaseAnalyzer):
     def get_data_requirements(self) -> DataRequirement:
         """Define data requirements by reading config directly."""
         config = self.config_provider.get_config()
-        holdings_config = config.analyses["holdings"]  # Dictionary access
+        holdings_config = config.get_analysis("holdings")  # Typed access
+        if holdings_config is None:
+            raise ConfigurationError(
+                "Holdings analysis configuration not found",
+                {"analysis": "holdings"},
+            )
 
         # Extract categories from typed config
         categories = holdings_config.data_requirements.categories
 
-        # Flatten all URLs from all categories
+        # Flatten, sanitize and deduplicate URLs from all categories
         all_urls: list[str] = []
         if categories:
             for category_urls in categories.values():
+                if not category_urls:
+                    continue
                 all_urls.extend(category_urls)
+
+        # Sanitize and deduplicate
+        urls = sorted({u.strip() for u in all_urls if isinstance(u, str) and u.strip()})
 
         return DataRequirement(
             strategy=ScrapingStrategy.CATEGORIES,
-            urls=all_urls,
+            urls=urls,
             metadata={
                 "categories": categories,
                 "analysis_id": "holdings",  # For coordinators to identify which analysis
@@ -128,10 +139,10 @@ class HoldingsAnalyzer(BaseAnalyzer):
             # Update summary
             summary["categories_processed"] += 1
             summary["total_funds"] += len(processed_funds)
-            summary["total_companies"] += len(category_output.get("companies", []))
+            summary["total_companies"] += category_output.get("unique_companies", 0)
 
             logger.info(
-                f"   ✅ {category}: {len(processed_funds)} funds, {len(category_output.get('companies', []))} companies"
+                f"   ✅ {category}: {len(processed_funds)} funds, {category_output.get('unique_companies', 0)} companies"
             )
 
         logger.info(

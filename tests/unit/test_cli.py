@@ -120,7 +120,7 @@ class TestCLIAnalyze:
         main()
 
         # Should have called run_analysis with specific type
-        mock_orchestrator.run_analysis.assert_called_once_with("holdings", None)
+        mock_orchestrator.run_analysis.assert_called_once_with("holdings", None, False)
 
     @patch("sys.argv", ["analyze", "--date", "20240903"])
     @patch("mfa.cli.analyze.create_config_provider")

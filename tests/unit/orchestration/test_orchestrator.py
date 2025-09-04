@@ -49,7 +49,7 @@ class TestAnalysisOrchestrator:
 
             # Verify single analysis was called
             mock_run.assert_called_once_with(
-                "holdings", mock_config_provider.get_config().analyses["holdings"], None
+                "holdings", mock_config_provider.get_config().analyses["holdings"], None, False
             )
 
     def test_run_analysis_with_all_enabled(self, mock_config_provider: Mock):
