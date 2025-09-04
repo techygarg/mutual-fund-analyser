@@ -37,8 +37,9 @@ help:
 	@echo "  make status      - 📋 Show project status and health"
 	@echo ""
 	@echo "$(GREEN)🏃‍♂️ Application Commands:$(NC)"
-	@echo "  make analyze     - 📊 Extract and analyze fund data (scrape + analyze)"
-	@echo "  make dashboard   - 🌐 Run dashboard server"
+	@echo "  make analyze                    - 📊 Extract and analyze fund data (scrape + analyze)"
+	@echo "  make analyze ANALYSIS_ONLY=1    - 🔄 Run analysis on existing data (skip scraping)"
+	@echo "  make dashboard                  - 🌐 Run dashboard server"
 	@echo ""
 	@echo "$(YELLOW)💡 Quick Start: make init && source venv/bin/activate$(NC)"
 
@@ -105,12 +106,12 @@ analyze:
 	@$(call check_venv)
 	@echo "$(BLUE)📊 Running Mutual Fund Analysis...$(NC)"
 	@echo "$(BLUE)   This will extract fund data and perform analysis$(NC)"
-	@mfa-analyze $(if $(DATE),--date $(DATE),) $(if $(CATEGORY),--category $(CATEGORY),) $(if $(VERBOSE),--verbose,) || (echo "$(RED)❌ Analysis failed. Check logs for details.$(NC)" && exit 1)
+	@mfa-analyze holdings $(if $(DATE),--date $(DATE),) $(if $(CATEGORY),--category $(CATEGORY),) $(if $(VERBOSE),--verbose,) $(if $(ANALYSIS_ONLY),--analysis-only,) || (echo "$(RED)❌ Analysis failed. Check logs for details.$(NC)" && exit 1)
 
 dashboard:
 	@$(call check_venv)
 	@echo "$(BLUE)🌐 Starting dashboard...$(NC)"
-	@python -m mfa.web.server
+	@cd dashboard && python server.py
 
 # ==============================================================================
 # STATUS & VALIDATION

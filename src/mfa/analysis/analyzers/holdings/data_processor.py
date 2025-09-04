@@ -103,9 +103,11 @@ class HoldingsDataProcessor:
                 rank = holding_data.get("rank", 0)
 
                 if company_name and allocation_pct > 0:
+                    # Normalize company name to avoid duplicates
+                    normalized_name = self._normalize_company_name(company_name)
                     processed_holdings.append(
                         ProcessedHolding(
-                            company_name=company_name,
+                            company_name=normalized_name,
                             allocation_percentage=allocation_pct,
                             rank=rank,
                         )
@@ -123,6 +125,51 @@ class HoldingsDataProcessor:
         """Check if a holding should be excluded from analysis."""
         company_upper = company_name.upper()
         return any(excluded.upper() in company_upper for excluded in excluded_holdings)
+
+    def _normalize_company_name(self, company_name: str) -> str:
+        """
+        Normalize company name by removing common suffixes and standardizing format.
+        
+        This helps avoid duplicate companies due to slight name variations.
+        
+        Args:
+            company_name: Raw company name from fund data
+            
+        Returns:
+            Normalized company name
+        """
+        if not company_name:
+            return company_name
+            
+        # Remove leading/trailing whitespace
+        normalized = company_name.strip()
+        
+        # Common suffixes to remove (in order of specificity)
+        suffixes_to_remove = [
+            r'\s+Limited\s*$',           # " Limited"
+            r'\s+Ltd\.?\s*$',            # " Ltd" or " Ltd."
+            r'\s+Pvt\.?\s*$',            # " Pvt" or " Pvt."
+            r'\s+Private\s+Limited\s*$', # " Private Limited" 
+            r'\s+Pvt\.?\s+Ltd\.?\s*$',   # " Pvt Ltd" or " Pvt. Ltd."
+            r'\s+Inc\.?\s*$',            # " Inc" or " Inc."
+            r'\s+Corporation\s*$',       # " Corporation"
+            r'\s+Corp\.?\s*$',           # " Corp" or " Corp."
+            r'\s+Company\s*$',           # " Company"
+            r'\s+Co\.?\s*$',             # " Co" or " Co."
+        ]
+        
+        # Apply suffix removal (case-insensitive)
+        for suffix_pattern in suffixes_to_remove:
+            normalized = re.sub(suffix_pattern, '', normalized, flags=re.IGNORECASE)
+            
+        # Clean up any remaining trailing dots or spaces
+        normalized = re.sub(r'[\.\s]+$', '', normalized)
+        
+        # Ensure we don't return empty string
+        if not normalized.strip():
+            return company_name
+            
+        return normalized.strip()
 
     def _parse_percentage(self, percentage_str: str) -> float:
         """Parse percentage string to float value."""

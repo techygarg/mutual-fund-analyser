@@ -128,10 +128,10 @@ class HoldingsAnalyzer(BaseAnalyzer):
             # Update summary
             summary["categories_processed"] += 1
             summary["total_funds"] += len(processed_funds)
-            summary["total_companies"] += len(category_output.get("companies", []))
+            summary["total_companies"] += category_output.get("unique_companies", 0)
 
             logger.info(
-                f"   ✅ {category}: {len(processed_funds)} funds, {len(category_output.get('companies', []))} companies"
+                f"   ✅ {category}: {len(processed_funds)} funds, {category_output.get('unique_companies', 0)} companies"
             )
 
         logger.info(

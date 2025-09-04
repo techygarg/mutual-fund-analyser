@@ -35,6 +35,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         Scrape funds organized by categories and save to files.
 
         Returns file paths for analysis instead of in-memory data.
+        Uses shared Playwright session for efficiency.
         """
         categories = requirement.metadata["categories"]
         analysis_id = requirement.metadata.get("analysis_id", "default")
@@ -60,23 +61,29 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         successful_scrapes = 0
 
-        for category, urls in categories.items():
-            logger.info(f"📂 Scraping category: {category} ({len(urls)} funds)")
+        try:
+            # Use shared session for all categories
+            for category, urls in categories.items():
+                logger.info(f"📂 Scraping category: {category} ({len(urls)} funds)")
 
-            # Scrape and save to files
-            category_results, file_paths = self._scrape_and_save_category(
-                urls, category, max_holdings, analysis_config
-            )
+                # Scrape and save to files using shared session
+                category_results, file_paths = self._scrape_and_save_category(
+                    urls, category, max_holdings, analysis_config
+                )
 
-            # Store both in-memory data (for compatibility) and file paths
-            scraped_data["data"][category] = category_results
-            scraped_data["file_paths"][category] = file_paths
+                # Store both in-memory data (for compatibility) and file paths
+                scraped_data["data"][category] = category_results
+                scraped_data["file_paths"][category] = file_paths
 
-            successful_scrapes += len(category_results)
-            logger.info(
-                f"   ✅ Category '{category}': {len(category_results)}/{len(urls)} funds scraped"
-            )
-            logger.info(f"   📁 Saved to {len(file_paths)} files")
+                successful_scrapes += len(category_results)
+                logger.info(
+                    f"   ✅ Category '{category}': {len(category_results)}/{len(urls)} funds scraped"
+                )
+                logger.info(f"   📁 Saved to {len(file_paths)} files")
+
+        finally:
+            # Ensure session cleanup
+            self.close_session()
 
         self._log_scraping_complete("category-based", successful_scrapes, total_urls)
         return scraped_data

@@ -10,7 +10,7 @@ from typing import Any
 
 from mfa.config.settings import ConfigProvider
 
-from .aggregator import AggregatedData
+from .aggregator import AggregatedData, CompanyData
 
 
 class HoldingsOutputBuilder:
@@ -31,14 +31,14 @@ class HoldingsOutputBuilder:
         """
         Build the complete output structure for a category.
 
-        Reads configuration directly from ConfigProvider instead of receiving params.
+        Matches the previous working structure that the dashboard expects.
 
         Args:
             category: Category name (e.g., "largeCap")
             aggregated_data: Aggregated holdings data
 
         Returns:
-            Complete analysis output dictionary
+            Complete analysis output dictionary in the expected format
         """
         # Read configuration directly
         config = self.config_provider.get_config()
@@ -51,35 +51,51 @@ class HoldingsOutputBuilder:
             for fund_info in aggregated_data.funds_info.values()
         ]
 
-        # Sort companies by fund count (descending) and weight
-        sorted_companies = sorted(
-            aggregated_data.companies.values(), key=lambda c: (-c.fund_count, -c.total_weight)
+        # Convert company data to the expected format (dashboard compatible)
+        def format_company(company_data: CompanyData) -> dict[str, Any]:
+            return {
+                "name": company_data.name,
+                "company": company_data.name,  # Dashboard expects 'company' field
+                "fund_count": company_data.fund_count,
+                "total_weight": round(company_data.total_weight, 2),
+                "avg_weight": round(company_data.average_weight, 3),  # Note: avg_weight, not average_weight
+                "sample_funds": company_data.sample_funds,
+            }
+
+        # Sort companies by fund count (descending), then by total weight (descending)
+        companies_by_fund_count = sorted(
+            aggregated_data.companies.values(), 
+            key=lambda c: (-c.fund_count, -c.total_weight)
         )
 
-        # Limit to max companies
+        # Sort companies by total weight (descending), then by fund count (descending)
+        companies_by_total_weight = sorted(
+            aggregated_data.companies.values(), 
+            key=lambda c: (-c.total_weight, -c.fund_count)
+        )
+
+        # Find companies that appear in ALL funds
+        total_funds = len(funds)
+        companies_in_all_funds = [
+            company for company in aggregated_data.companies.values()
+            if company.fund_count == total_funds
+        ]
+        # Sort common companies by total weight (descending)
+        companies_in_all_funds.sort(key=lambda c: -c.total_weight)
+
+        # Apply max_companies limit to each category
         if max_companies > 0:
-            sorted_companies = sorted_companies[:max_companies]
+            companies_by_fund_count = companies_by_fund_count[:max_companies]
+            companies_by_total_weight = companies_by_total_weight[:max_companies]
+            companies_in_all_funds = companies_in_all_funds[:max_companies]
 
-        # Build company output
-        companies = []
-        for company_data in sorted_companies:
-            companies.append(
-                {
-                    "name": company_data.name,
-                    "fund_count": company_data.fund_count,
-                    "total_weight": round(company_data.total_weight, 2),
-                    "average_weight": round(company_data.average_weight, 2),
-                    "sample_funds": company_data.sample_funds,
-                }
-            )
-
+        # Build the output structure matching the previous format
         return {
-            "category": category,
-            "summary": {
-                "total_funds": len(funds),
-                "total_companies": len(aggregated_data.companies),
-                "companies_in_results": len(companies),
-            },
+            "total_files": len(funds),  # Dashboard expects this field
+            "total_funds": len(funds),
             "funds": funds,
-            "companies": companies,
+            "unique_companies": len(aggregated_data.companies),
+            "top_by_fund_count": [format_company(c) for c in companies_by_fund_count],
+            "top_by_total_weight": [format_company(c) for c in companies_by_total_weight],
+            "common_in_all_funds": [format_company(c) for c in companies_in_all_funds],
         }

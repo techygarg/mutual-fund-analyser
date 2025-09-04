@@ -34,6 +34,7 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         Scrape specific fund URLs and save to files.
 
         Returns file paths for analysis instead of in-memory data.
+        Uses shared Playwright session for efficiency.
         """
         urls = requirement.urls
         analysis_id = requirement.metadata.get("analysis_id", "default")
@@ -49,20 +50,25 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         self._log_scraping_start("targeted", len(urls))
 
-        # Build storage config
-        storage_config = self._build_storage_config_for_targeted(analysis_config)
+        try:
+            # Build storage config
+            storage_config = self._build_storage_config_for_targeted(analysis_config)
 
-        # Scrape and save to files
-        results = self._scrape_urls_with_delay(urls, max_holdings, "targeted", storage_config)
+            # Scrape and save to files using shared session
+            results = self._scrape_urls_with_delay(urls, max_holdings, "targeted", storage_config)
 
-        # Generate file paths that were created
-        file_paths = self._generate_expected_file_paths(urls, storage_config)
+            # Generate file paths that were created
+            file_paths = self._generate_expected_file_paths(urls, storage_config)
 
-        scraped_data = {
-            "strategy": "targeted_funds",
-            "data": {"targeted": results},
-            "file_paths": {"targeted": file_paths},
-        }
+            scraped_data = {
+                "strategy": "targeted_funds",
+                "data": {"targeted": results},
+                "file_paths": {"targeted": file_paths},
+            }
+
+        finally:
+            # Ensure session cleanup
+            self.close_session()
 
         self._log_scraping_complete("targeted", len(results), len(urls))
         return scraped_data

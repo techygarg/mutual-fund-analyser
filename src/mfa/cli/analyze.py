@@ -33,6 +33,11 @@ def _parse_args() -> argparse.Namespace:
         "--status", "-s", action="store_true", help="Show current analysis configuration and exit"
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--analysis-only", "--no-scrape", 
+        action="store_true", 
+        help="Skip scraping and run analysis on existing data only"
+    )
     return parser.parse_args()
 
 
@@ -101,7 +106,10 @@ def main() -> None:
             print(f"📅 Date: {args.date}")
         print(f"🔍 Analysis: {args.analysis_type}")
 
-        orchestrator.run_analysis(args.analysis_type, args.date)
+        if args.analysis_only:
+            print("🔄 Analysis-only mode: skipping scraping")
+        
+        orchestrator.run_analysis(args.analysis_type, args.date, args.analysis_only)
 
         print("\n🎉 Analysis completed successfully!")
         print("📊 View results at: http://localhost:8787 (run 'make dashboard')")

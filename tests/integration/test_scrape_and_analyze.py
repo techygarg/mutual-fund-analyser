@@ -113,45 +113,91 @@ class TestScrapeAndAnalyze:
 
             print(f"✅ Generated analysis for {len(analysis_files)} categories")
 
-            # Verify analysis content structure (using first analysis file)
+            # Verify analysis content structure (dashboard-compatible format)
             with open(analysis_files[0]) as f:
                 analysis_data = json.load(f)
 
-                # Check required analysis fields (updated for new structure)
-                required_fields = ["category", "summary", "funds", "companies"]
+                # Check required TOP-LEVEL fields for dashboard compatibility
+                required_top_level_fields = [
+                    "total_files", "total_funds", "funds", "unique_companies",
+                    "top_by_fund_count", "top_by_total_weight", "common_in_all_funds"
+                ]
 
-                for field in required_fields:
-                    assert field in analysis_data, f"Analysis should contain '{field}' field"
+                for field in required_top_level_fields:
+                    assert field in analysis_data, f"Analysis must contain '{field}' field for dashboard compatibility"
 
-                # Check summary fields
-                summary = analysis_data["summary"]
-                assert "total_funds" in summary, "Summary should contain total_funds"
-                assert "total_companies" in summary, "Summary should contain total_companies"
-                assert "companies_in_results" in summary, (
-                    "Summary should contain companies_in_results"
-                )
+                # Validate that we DON'T have the old broken structure
+                broken_fields = ["category", "summary", "companies"]
+                for field in broken_fields:
+                    assert field not in analysis_data, f"Analysis should NOT contain old '{field}' field structure"
 
-                # Basic validation of analysis values
-                assert summary["total_funds"] >= 1, "Should have analyzed at least 1 fund"
-                assert summary["total_companies"] >= 0, "Should have counted companies"
-                assert len(analysis_data["companies"]) >= 0, "Should have companies list"
+                # Validate critical dashboard field values
+                assert analysis_data["total_files"] >= 1, "Should have total_files >= 1"
+                assert analysis_data["total_funds"] >= 1, "Should have total_funds >= 1"
+                assert analysis_data["unique_companies"] >= 0, "Should have unique_companies count"
+                
+                # Validate arrays exist and are lists
+                assert isinstance(analysis_data["top_by_fund_count"], list), "top_by_fund_count should be a list"
+                assert isinstance(analysis_data["top_by_total_weight"], list), "top_by_total_weight should be a list"
+                assert isinstance(analysis_data["common_in_all_funds"], list), "common_in_all_funds should be a list"
+                assert isinstance(analysis_data["funds"], list), "funds should be a list"
 
-                # Validate structure of companies
-                companies = analysis_data["companies"]
-                assert isinstance(companies, list), "companies should be a list"
+                # Validate fund structure
+                if analysis_data["funds"]:
+                    fund = analysis_data["funds"][0]
+                    fund_fields = ["name", "aum"]
+                    for field in fund_fields:
+                        assert field in fund, f"Fund data should contain '{field}' field"
 
-                if companies:  # If we have company data
-                    company = companies[0]
-                    # Check for correct field names in our new output structure
-                    company_fields = [
-                        "name",
-                        "fund_count",
-                        "total_weight",
-                        "average_weight",
-                        "sample_funds",
-                    ]
-                    for field in company_fields:
-                        assert field in company, f"Company data should contain '{field}' field"
+                # Validate company structure in each array
+                for array_name in ["top_by_fund_count", "top_by_total_weight", "common_in_all_funds"]:
+                    companies_array = analysis_data[array_name]
+                    if companies_array:  # If we have company data
+                        company = companies_array[0]
+                        # Check for EXACT field names dashboard expects
+                        company_fields = [
+                            "name", "company", "fund_count", "total_weight", "avg_weight", "sample_funds"
+                        ]
+                        for field in company_fields:
+                            assert field in company, f"Company in {array_name} should contain '{field}' field"
+                        
+                        # Validate that 'name' and 'company' have the same value
+                        assert company["name"] == company["company"], f"Company 'name' and 'company' fields should have the same value"
+                        
+                        # Validate we DON'T have the wrong field name
+                        assert "average_weight" not in company, f"Company in {array_name} should use 'avg_weight', not 'average_weight'"
+
+                # Validate sorting logic
+                top_by_fund_count = analysis_data["top_by_fund_count"]
+                if len(top_by_fund_count) >= 2:
+                    # Should be sorted by fund_count descending, then total_weight descending
+                    for i in range(len(top_by_fund_count) - 1):
+                        current = top_by_fund_count[i]
+                        next_item = top_by_fund_count[i + 1]
+                        assert (
+                            current["fund_count"] > next_item["fund_count"] or
+                            (current["fund_count"] == next_item["fund_count"] and 
+                             current["total_weight"] >= next_item["total_weight"])
+                        ), "top_by_fund_count should be sorted by fund_count desc, then total_weight desc"
+
+                top_by_total_weight = analysis_data["top_by_total_weight"]
+                if len(top_by_total_weight) >= 2:
+                    # Should be sorted by total_weight descending
+                    for i in range(len(top_by_total_weight) - 1):
+                        current = top_by_total_weight[i]
+                        next_item = top_by_total_weight[i + 1]
+                        assert current["total_weight"] >= next_item["total_weight"], (
+                            "top_by_total_weight should be sorted by total_weight desc"
+                        )
+
+                # Validate common_in_all_funds logic
+                total_funds = analysis_data["total_funds"]
+                common_companies = analysis_data["common_in_all_funds"]
+                for company in common_companies:
+                    assert company["fund_count"] == total_funds, (
+                        f"Companies in common_in_all_funds should appear in ALL {total_funds} funds, "
+                        f"but {company['name']} appears in {company['fund_count']} funds"
+                    )
 
             print("✅ Analysis completed and validated")
             print(f"📁 Test workspace: {workspace_path}")
