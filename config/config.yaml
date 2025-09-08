@@ -1,8 +1,3 @@
-# =============================================================================
-# MFA Configuration - Analysis-Driven Architecture
-# =============================================================================
-
-# Directory paths
 paths:
   output_dir: outputs/extracted_json
   analysis_dir: outputs/analysis
@@ -68,7 +63,7 @@ analyses:
         - "CBLO"         # Collateralized Borrowing
   portfolio:
     enabled: true
-    type: portfolio-composition
+    type: portfolio
     data_requirements:
       scraping_strategy: targeted_funds
       funds:
@@ -76,14 +71,12 @@ analyses:
           url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
         - units: 500
           url: https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
+        - units: 400
+          url: https://coin.zerodha.com/mf/fund/INF204K01K15/nippon-india-small-cap-fund-direct-growth
+        - units: 300
+          url: https://coin.zerodha.com/mf/fund/INF846K01EH3/axis-midcap-fund-direct-growth
+        - units: 200
+          url: https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
     params:
       max_holdings: 50                  # Portfolio analysis needs more detailed holdings
-      target_investment: 100000
       chart_top_n: 20
-      # exclude_from_analysis:
-        # - "TREPS"
-        # - "CASH"
-  #   # Optional: Custom path template (if not specified, uses smart defaults)
-  #   # Smart default for portfolio would be: outputs/extracted_json/{date}/portfolio/
-  #   # path_template: "{output_dir}/{date}/portfolio"
-  #   # analysis_output_template: "{analysis_dir}/{date}/portfolio" 
