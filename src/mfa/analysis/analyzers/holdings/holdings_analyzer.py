@@ -24,7 +24,7 @@ from .data_processor import HoldingsDataProcessor
 from .output_builder import HoldingsOutputBuilder
 
 
-@register_analyzer("fund-holdings")
+@register_analyzer("holdings")
 class HoldingsAnalyzer(BaseAnalyzer):
     """
     Analyzer for fund holdings patterns and overlaps with dependency injection.
@@ -40,7 +40,7 @@ class HoldingsAnalyzer(BaseAnalyzer):
         Args:
             config_provider: Configuration provider instance
         """
-        super().__init__(config_provider, "fund-holdings")  # Call parent constructor
+        super().__init__(config_provider, "holdings")  # Call parent constructor
         # self.config_provider is already set by parent
         self.path_generator = PathGenerator(config_provider)
 
@@ -74,7 +74,7 @@ class HoldingsAnalyzer(BaseAnalyzer):
         urls = sorted({u.strip() for u in all_urls if isinstance(u, str) and u.strip()})
 
         return DataRequirement(
-            strategy=ScrapingStrategy.CATEGORIES,
+            strategy=ScrapingStrategy.API_SCRAPING,
             urls=urls,
             metadata={
                 "categories": categories,

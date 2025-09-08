@@ -23,12 +23,12 @@ output:
 analyses:
   holdings:
     enabled: true
-    type: fund-holdings
+    type: holdings
     # Note: No path_template specified, so uses smart defaults:
     # outputs/extracted_json/{date}/holdings/{category}/ for scraped data
     # outputs/analysis/{date}/ for analysis results
     data_requirements:
-      scraping_strategy: categories
+      scraping_strategy: api_scraping
       categories:
           largeCap:
             - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -56,7 +56,7 @@ analyses:
             - https://coin.zerodha.com/mf/fund/INF109K015M0/icici-prudential-smallcap-fund-direct-growth
             - https://coin.zerodha.com/mf/fund/INF247L01BY3/motilal-oswal-small-cap-fund-direct-growth
     params:
-      max_holdings: 10                    # Number of top holdings to extract per fund
+      max_holdings: 50                    # Increased from 10 to 50 (API can handle more efficiently)
       max_companies_in_results: 100
       max_sample_funds_per_company: 10
       exclude_from_analysis:

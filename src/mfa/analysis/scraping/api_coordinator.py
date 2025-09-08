@@ -38,6 +38,8 @@ class APIScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
     def scrape_for_requirement(self, requirement: DataRequirement) -> dict[str, Any]:
         """
         Scrape fund data using APIs based on requirements.
+        
+        Supports both flat URL lists (portfolio) and categorized URLs (holdings).
 
         Args:
             requirement: Data requirement specification
@@ -48,8 +50,8 @@ class APIScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
         Raises:
             ValueError: If analysis configuration is not found
         """
-        urls = requirement.urls
         analysis_id = requirement.metadata.get("analysis_id", "default")
+        categories = requirement.metadata.get("categories", {})
 
         # Read configuration for this analysis
         config = self.config_provider.get_config()
@@ -66,33 +68,20 @@ class APIScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
             f"🔧 API scraping config: max_holdings={max_holdings}, delay={delay_between_requests}s"
         )
 
-        self._log_scraping_start("api", len(urls))
+        # Initialize API scraper
+        self._api_scraper = ZerodhaAPIFundScraper(delay_between_requests=delay_between_requests)
 
         try:
-            # Build storage configuration
-            storage_config = self._build_storage_config_for_api(analysis_config)
-
-            # Initialize API scraper
-            self._api_scraper = ZerodhaAPIFundScraper(delay_between_requests=delay_between_requests)
-
-            # Scrape all URLs
-            results = self._scrape_urls_with_api(urls, max_holdings, storage_config)
-
-            # Generate file paths that were created
-            file_paths = self._generate_expected_file_paths(urls, storage_config)
-
-            scraped_data = {
-                "strategy": "api_scraping",
-                "data": {"api": results},
-                "file_paths": {"targeted": file_paths},  # Use 'targeted' key for compatibility
-            }
+            # Handle categorized URLs (holdings analysis)
+            if categories:
+                return self._scrape_categorized_urls(categories, analysis_config, max_holdings)
+            # Handle flat URL list (portfolio analysis)
+            else:
+                return self._scrape_flat_urls(requirement.urls, analysis_config, max_holdings)
 
         finally:
             # Ensure scraper cleanup
             self.close_session()
-
-        self._log_scraping_complete("api", len(results), len(urls))
-        return scraped_data
 
     def _build_storage_config_for_api(self, analysis_config: Any) -> dict[str, Any]:
         """Build storage configuration for API scraping."""
@@ -212,10 +201,117 @@ class APIScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator):
 
         return file_paths
 
+    def _scrape_categorized_urls(
+        self, categories: dict[str, list[str]], analysis_config: Any, max_holdings: int
+    ) -> dict[str, Any]:
+        """
+        Handle category-based scraping for holdings analysis.
+        
+        Args:
+            categories: Dictionary mapping category names to URL lists
+            analysis_config: Analysis configuration
+            max_holdings: Maximum holdings per fund
+            
+        Returns:
+            Dictionary with categorized file paths and scraping results
+        """
+        logger.info(f"🗂️ Starting categorized API scraping for {len(categories)} categories")
+        
+        all_results = []
+        category_files = {}
+        total_urls = sum(len(urls) for urls in categories.values())
+        
+        self._log_scraping_start("categorized API", total_urls)
+        
+        for category, urls in categories.items():
+            logger.info(f"📊 Scraping category '{category}' with {len(urls)} funds")
+            
+            # Build storage config for this category
+            storage_config = self._build_storage_config_for_category(analysis_config, category)
+            
+            # Scrape all URLs in this category
+            category_results = self._scrape_urls_with_api(urls, max_holdings, storage_config)
+            
+            # Generate file paths for this category
+            category_file_paths = self._generate_expected_file_paths(urls, storage_config)
+            
+            category_files[category] = category_file_paths
+            all_results.extend(category_results)
+            
+            logger.info(f"   ✅ {category}: scraped {len(category_results)} funds")
+
+        successful_results = [r for r in all_results if r.get("status") == "success"]
+        self._log_scraping_complete("categorized API", len(successful_results), len(all_results))
+        
+        return {
+            "strategy": "api_scraping",
+            "data": {"api": all_results},
+            "file_paths": category_files,  # Categorized paths for holdings analysis
+        }
+
+    def _scrape_flat_urls(
+        self, urls: list[str], analysis_config: Any, max_holdings: int
+    ) -> dict[str, Any]:
+        """
+        Handle flat URL list scraping for portfolio analysis.
+        
+        Args:
+            urls: List of URLs to scrape
+            analysis_config: Analysis configuration
+            max_holdings: Maximum holdings per fund
+            
+        Returns:
+            Dictionary with flat file paths and scraping results
+        """
+        logger.info(f"📋 Starting flat API scraping for {len(urls)} funds")
+        
+        self._log_scraping_start("flat API", len(urls))
+        
+        # Build storage configuration
+        storage_config = self._build_storage_config_for_api(analysis_config)
+        
+        # Scrape all URLs
+        results = self._scrape_urls_with_api(urls, max_holdings, storage_config)
+        
+        # Generate file paths
+        file_paths = self._generate_expected_file_paths(urls, storage_config)
+        
+        successful_results = [r for r in results if r.get("status") == "success"]
+        self._log_scraping_complete("flat API", len(successful_results), len(results))
+        
+        return {
+            "strategy": "api_scraping", 
+            "data": {"api": results},
+            "file_paths": {"targeted": file_paths},  # Flat paths for portfolio analysis
+        }
+
+    def _build_storage_config_for_category(self, analysis_config: Any, category: str) -> dict[str, Any]:
+        """Build storage configuration for a specific category."""
+        config = self.config_provider.get_config()
+
+        # Extract analysis type from config instead of hardcoding
+        analysis_type = getattr(analysis_config, "type", "default")
+        
+        storage_config = {
+            "should_save": True,
+            "base_dir": config.paths.output_dir,
+            "category": category,  # Use the specific category (largeCap, midCap, etc.)
+            "date": None,  # Will be auto-generated
+            "url_path_template": "api_{fund_id}_{fund_name}",
+            "analysis_type": analysis_type,  # Use actual analysis type from config
+            "type": analysis_type,  # Also set 'type' for compatibility with PathGenerator
+        }
+
+        logger.debug(f"📁 Category storage config for '{category}': {storage_config}")
+        return storage_config
+
     def close_session(self) -> None:
         """Close API scraper and clean up resources."""
         if self._api_scraper:
-            self._api_scraper.close()
+            # Note: ZerodhaAPIFundScraper might not have a close() method
+            # but we'll implement it for consistency
+            if hasattr(self._api_scraper, 'close'):
+                self._api_scraper.close()
             self._api_scraper = None
             logger.debug("🔒 Closed API scraper session")
 
