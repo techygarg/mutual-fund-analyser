@@ -113,8 +113,11 @@ class PathGenerator:
                 category,
             )
         else:
-            # Smart defaults for analysis outputs
-            directory_path = f"{base_dir}/{date_str}"
+            # Smart defaults for analysis outputs with analysis_type
+            analysis_type = analysis_config.get("type", "unknown") if analysis_config else "unknown"
+            directory_path = self._generate_smart_default_path(
+                base_dir, date_str, analysis_type, category
+            )
 
         return Path(directory_path) / f"{category}.json"
 
@@ -173,8 +176,8 @@ class PathGenerator:
             Smart default directory path
         """
         if category and category != "default":
-            # Categorized analysis (e.g., holdings): base_dir/date/analysis_type/category/
-            return f"{base_dir}/{date_str}/{analysis_type}/{category}"
+            # Categorized analysis (e.g., holdings): base_dir/date/analysis_type/
+            return f"{base_dir}/{date_str}/{analysis_type}"
         else:
             # Non-categorized analysis (e.g., portfolio): base_dir/date/analysis_type/
             return f"{base_dir}/{date_str}/{analysis_type}"

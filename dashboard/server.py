@@ -96,24 +96,23 @@ class HoldingsPlugin(AnalysisPlugin):
         return True
     
     def get_categories(self, date: str) -> List[str]:
-        date_dir = ANALYSIS_ROOT / date
+        date_dir = ANALYSIS_ROOT / date / "holdings"
         if not date_dir.exists():
             return []
-        # For holdings, categories are JSON files except portfolio.json
+        # For holdings, categories are JSON files
         categories = []
         for file_path in date_dir.glob("*.json"):
-            if file_path.stem != "portfolio":
-                categories.append(file_path.stem)
+            categories.append(file_path.stem)
         return sorted(categories)
     
     def get_analysis_data(self, date: str, category: Optional[str] = None) -> Dict[str, Any]:
         if not category:
             raise HTTPException(status_code=400, detail="Category required for holdings analysis")
-        
-        file_path = ANALYSIS_ROOT / date / f"{category}.json"
+
+        file_path = ANALYSIS_ROOT / date / "holdings" / f"{category}.json"
         if not file_path.exists():
             return self._empty_holdings_structure()
-        
+
         return json.loads(file_path.read_text(encoding="utf-8"))
     
     def get_funds_data(self, date: str, category: Optional[str] = None) -> Dict[str, Any]:
@@ -123,7 +122,7 @@ class HoldingsPlugin(AnalysisPlugin):
         date_dir = EXTRACTED_ROOT / date / "holdings" / category
         if not date_dir.exists():
             return {"funds": []}
-        
+
         items = []
         for fp in sorted(date_dir.glob("*.json")):
             try:
@@ -192,17 +191,17 @@ class PortfolioPlugin(AnalysisPlugin):
         return []
     
     def get_analysis_data(self, date: str, category: Optional[str] = None) -> Dict[str, Any]:
-        file_path = ANALYSIS_ROOT / date / "portfolio.json"
+        file_path = ANALYSIS_ROOT / date / "portfolio" / "portfolio.json"
         if not file_path.exists():
             return self._empty_portfolio_structure()
-        
+
         return json.loads(file_path.read_text(encoding="utf-8"))
     
     def get_funds_data(self, date: str, category: Optional[str] = None) -> Dict[str, Any]:
         date_dir = EXTRACTED_ROOT / date / "portfolio"
         if not date_dir.exists():
             return {"funds": []}
-        
+
         items = []
         for fp in sorted(date_dir.glob("*.json")):
             try:
@@ -210,11 +209,11 @@ class PortfolioPlugin(AnalysisPlugin):
                 d = raw.get("data") or {}
                 fund = d.get("fund_info") or {}
                 holdings = d.get("top_holdings") or []
-                
+
                 # For portfolio, show different structure - fund value, NAV, etc.
                 fund_name = fund.get("fund_name") or fp.stem
                 nav = fund.get("current_nav") or 0.0
-                
+
                 parsed = []
                 for h in holdings[:10]:
                     name = (h.get("company_name") or "").strip()
@@ -224,7 +223,7 @@ class PortfolioPlugin(AnalysisPlugin):
                     except Exception:
                         pct_val = 0.0
                     parsed.append({"company": name, "percentage": pct_val})
-                
+
                 items.append({
                     "fund_name": fund_name,
                     "nav": nav,
@@ -232,7 +231,7 @@ class PortfolioPlugin(AnalysisPlugin):
                 })
             except Exception:
                 continue
-        
+
         return {"funds": items}
     
     def transform_for_ui(self, data: Dict[str, Any]) -> Dict[str, Any]:
