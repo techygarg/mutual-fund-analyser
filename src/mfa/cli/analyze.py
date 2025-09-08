@@ -4,6 +4,7 @@ import argparse
 
 # Import analyzers and coordinators to ensure they get registered
 import mfa.analysis.analyzers.holdings  # noqa: F401 - Registers holdings analyzer
+import mfa.analysis.analyzers.portfolio  # noqa: F401 - Registers portfolio analyzer
 import mfa.analysis.scraping.category_coordinator  # noqa: F401 - Registers category coordinator
 import mfa.analysis.scraping.targeted_coordinator  # noqa: F401 - Registers targeted coordinator
 from mfa.config.settings import create_config_provider

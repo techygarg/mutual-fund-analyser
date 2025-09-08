@@ -502,47 +502,7 @@
       const sel = document.getElementById('dateSel');
       sel.innerHTML = '';
       res.dates.slice().reverse().forEach(d => opt(sel, d));
-
-      // Select the most recent date that has data for current analysis type
-      if (res.dates.length > 0) {
-        // Try to find a date that has data for the current analysis type
-        let selectedDate = null;
-
-        // First try the most recent date
-        const mostRecent = res.dates[res.dates.length - 1];
-        try {
-          const testRes = await getJSON(`/api/data?date=${encodeURIComponent(mostRecent)}&analysis_type=${encodeURIComponent(currentAnalysisType)}`);
-          if (testRes && !testRes.error) {
-            selectedDate = mostRecent;
-          }
-        } catch (e) {
-          // Most recent date doesn't have data, find another date
-          console.log(`No ${currentAnalysisType} data for ${mostRecent}, looking for alternative date...`);
-        }
-
-        // If most recent doesn't work, try other dates in reverse chronological order
-        if (!selectedDate) {
-          for (let i = res.dates.length - 1; i >= 0; i--) {
-            const date = res.dates[i];
-            try {
-              const testRes = await getJSON(`/api/data?date=${encodeURIComponent(date)}&analysis_type=${encodeURIComponent(currentAnalysisType)}`);
-              if (testRes && !testRes.error) {
-                selectedDate = date;
-                break;
-              }
-            } catch (e) {
-              continue;
-            }
-          }
-        }
-
-        // If no date has data, just select the most recent
-        if (!selectedDate) {
-          selectedDate = res.dates[res.dates.length - 1];
-          console.warn(`No ${currentAnalysisType} data found for any date, selecting most recent anyway`);
-        }
-
-        sel.value = selectedDate;
+      if (sel.value) {
         await loadAnalysisTypes();
         await loadData();
       }
@@ -712,12 +672,13 @@
         renderHoldingsAnalysis();
       } else if (currentAnalysisType === 'portfolio') {
         renderPortfolioAnalysis();
-      }
-
-      // Show/hide bottom funds list (only for holdings)
-      const holdingsFundsListCard = document.getElementById("holdingsFundsListCard");
-      if (holdingsFundsListCard) {
-        holdingsFundsListCard.style.display = currentAnalysisType === "holdings" ? "block" : "none";
+        }
+        
+        // Show/hide bottom funds list (only for holdings)
+        const holdingsFundsListCard = document.getElementById("holdingsFundsListCard");
+        if (holdingsFundsListCard) {
+          holdingsFundsListCard.style.display = currentAnalysisType === "holdings" ? "block" : "none";
+        }
       }
 
       // Update funds panel for current sub-tab
@@ -928,12 +889,13 @@
             renderHoldingsFunds();
           } else if (currentAnalysisType === 'portfolio') {
             renderPortfolioFunds();
-          }
-
-          // Hide bottom funds list when in funds tab (redundant with funds panels)
-          const holdingsFundsListCard = document.getElementById("holdingsFundsListCard");
-          if (holdingsFundsListCard) {
-            holdingsFundsListCard.style.display = "none";
+        }
+        
+        // Hide bottom funds list when in funds tab (redundant with funds panels)
+        const holdingsFundsListCard = document.getElementById("holdingsFundsListCard");
+        if (holdingsFundsListCard) {
+          holdingsFundsListCard.style.display = "none";
+        }
           }
         }
       }
@@ -1012,8 +974,9 @@
         if (holdingsFundsListCard) {
           holdingsFundsListCard.style.display = "none";
         }
+          }
         }
-
+        
         // Hide all other funds panels
         document.querySelectorAll(".funds-panel").forEach(panel => {
           if (panel.id !== `${currentAnalysisType}FundsPanel`) {
@@ -1048,6 +1011,7 @@
         if (holdingsFundsListCard) {
           holdingsFundsListCard.style.display = currentAnalysisType === "holdings" ? "block" : "none";
         }
+        }
       }
 
       // Move indicator
@@ -1074,33 +1038,30 @@
       });
     }
 
-    // ==================== INITIALIZATION ====================
-    document.addEventListener('DOMContentLoaded', function() {
-      // Event listeners
-      document.getElementById('dateSel').addEventListener('change', async () => {
-        await loadAnalysisTypes();
-        await loadData();
-      });
-
-      document.getElementById('catSel').addEventListener('change', loadData);
-      document.getElementById('loadBtn').addEventListener('click', loadData);
-
-      // Sub-tab navigation
-      document.getElementById('tabAnalysis').addEventListener('click', () => setActiveSubTab('analysis'));
-      document.getElementById('tabFunds').addEventListener('click', () => setActiveSubTab('funds'));
-
-      // Responsive indicator adjustment
-      window.addEventListener('resize', () => {
-        const fActive = document.getElementById('tabFunds').classList.contains('active');
-        setActiveSubTab(fActive ? 'funds' : 'analysis');
-        updateAnalysisTypeIndicator();
-      });
-
-      // Initialize the dashboard
-      attachSorting();
-      window.requestAnimationFrame(() => setActiveSubTab('analysis'));
-      loadDates().then(() => loadData()).catch(console.error);
+    // ==================== EVENT LISTENERS ====================
+    document.getElementById('dateSel').addEventListener('change', async () => {
+      await loadAnalysisTypes();
+      await loadData();
     });
+
+    document.getElementById('catSel').addEventListener('change', loadData);
+    document.getElementById('loadBtn').addEventListener('click', loadData);
+
+    // Sub-tab navigation
+    document.getElementById('tabAnalysis').addEventListener('click', () => setActiveSubTab('analysis'));
+    document.getElementById('tabFunds').addEventListener('click', () => setActiveSubTab('funds'));
+
+    // Responsive indicator adjustment
+    window.addEventListener('resize', () => {
+      const fActive = document.getElementById('tabFunds').classList.contains('active');
+      setActiveSubTab(fActive ? 'funds' : 'analysis');
+      updateAnalysisTypeIndicator();
+    });
+
+    // ==================== INITIALIZATION ====================
+    attachSorting();
+    window.requestAnimationFrame(() => setActiveSubTab('analysis'));
+    loadDates().then(() => loadData()).catch(console.error);
   </script>
 </body>
 

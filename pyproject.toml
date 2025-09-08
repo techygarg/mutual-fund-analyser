@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
   # scraping
   "playwright>=1.45.0,<2.0.0",
+  "requests>=2.31.0,<3.0.0",
 
   # web dashboard
   "fastapi>=0.110.0,<1.0.0",

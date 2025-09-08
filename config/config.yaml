@@ -66,25 +66,23 @@ analyses:
         - "REVERSE REPO" # Reverse Repo
         - "REPO"         # Repo
         - "CBLO"         # Collateralized Borrowing
-
-  # Future portfolio analysis example with custom path template:
-  # portfolio:
-  #   enabled: false
-  #   type: portfolio-composition
-  #   data_requirements:
-  #     scraping_strategy: targeted_funds
-  #     funds:
-  #       - units: 1000
-  #         url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
-  #       - units: 500
-  #         url: https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
-  #   params:
-  #     max_holdings: 50                  # Portfolio analysis needs more detailed holdings
-  #     target_investment: 100000
-  #     chart_top_n: 20
-  #     exclude_from_analysis:
-  #       - "TREPS"
-  #       - "CASH"
+  portfolio:
+    enabled: true
+    type: portfolio-composition
+    data_requirements:
+      scraping_strategy: targeted_funds
+      funds:
+        - units: 1000
+          url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+        - units: 500
+          url: https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
+    params:
+      max_holdings: 50                  # Portfolio analysis needs more detailed holdings
+      target_investment: 100000
+      chart_top_n: 20
+      # exclude_from_analysis:
+        # - "TREPS"
+        # - "CASH"
   #   # Optional: Custom path template (if not specified, uses smart defaults)
   #   # Smart default for portfolio would be: outputs/extracted_json/{date}/portfolio/
   #   # path_template: "{output_dir}/{date}/portfolio"
