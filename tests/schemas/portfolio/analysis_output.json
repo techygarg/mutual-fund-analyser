@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "portfolio_analysis_output",
+  "title": "Portfolio Analysis Output",
+  "description": "Schema for portfolio analysis output files",
+  "type": "object",
+  "properties": {
+    "portfolio_summary": {
+      "type": "object",
+      "properties": {
+        "total_value": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total portfolio value in currency units"
+        },
+        "fund_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of funds in portfolio"
+        },
+        "unique_companies": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of unique companies across all funds"
+        },
+        "top_n": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of top companies shown in chart"
+        }
+      },
+      "required": ["total_value", "fund_count", "unique_companies", "top_n"],
+      "additionalProperties": false
+    },
+    "funds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fund"
+      },
+      "description": "Array of funds in the portfolio"
+    },
+    "company_allocations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/company_allocation"
+      },
+      "description": "All company allocations across funds"
+    },
+    "top_companies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/company_allocation"
+      },
+      "description": "Top N companies by allocation amount"
+    }
+  },
+  "required": [
+    "portfolio_summary",
+    "funds",
+    "company_allocations",
+    "top_companies"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "fund": {
+      "type": "object",
+      "properties": {
+        "fund_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the mutual fund"
+        },
+        "url": {
+          "type": "string",
+          "description": "URL to the fund's page"
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Number of units held"
+        },
+        "nav": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Net Asset Value per unit"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total value of holdings (units × NAV)"
+        }
+      },
+      "required": ["fund_name", "url", "units", "nav", "value"],
+      "additionalProperties": false
+    },
+    "company_allocation": {
+      "type": "object",
+      "properties": {
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the company"
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total amount invested in this company"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of total portfolio value"
+        },
+        "from_funds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fund_contribution"
+          },
+          "description": "Breakdown by fund contributions"
+        }
+      },
+      "required": ["company_name", "amount", "percentage", "from_funds"],
+      "additionalProperties": false
+    },
+    "fund_contribution": {
+      "type": "object",
+      "properties": {
+        "fund_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the contributing fund"
+        },
+        "contribution": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Amount contributed by this fund"
+        }
+      },
+      "required": ["fund_name", "contribution"],
+      "additionalProperties": false
+    }
+  }
+}
