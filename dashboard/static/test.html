@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .test { background: white; padding: 20px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Test Page</h1>
+    
+    <div class="test">
+        <h2>If you can see this, the server is working!</h2>
+        <p>Current time: <span id="time"></span></p>
+        <p>API Test: <span id="api-status">Testing...</span></p>
+    </div>
+    
+    <div class="test">
+        <h2>Navigation</h2>
+        <a href="/">Go to Main Dashboard</a>
+    </div>
+
+    <script>
+        // Update time
+        document.getElementById('time').textContent = new Date().toLocaleString();
+        
+        // Test API
+        fetch('/api/dates')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('api-status').textContent = '✅ Working - Found ' + data.dates.length + ' dates';
+            })
+            .catch(e => {
+                document.getElementById('api-status').textContent = '❌ Failed: ' + e.message;
+            });
+    </script>
+</body>
+</html>

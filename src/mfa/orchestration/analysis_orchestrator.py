@@ -12,6 +12,7 @@ from typing import Any
 
 # Import analyzers and coordinators to ensure they get registered
 import mfa.analysis.analyzers.holdings  # noqa: F401 - Registers holdings analyzer
+import mfa.analysis.analyzers.portfolio  # noqa: F401 - Registers portfolio analyzer
 import mfa.analysis.scraping.category_coordinator  # noqa: F401 - Registers category coordinator
 import mfa.analysis.scraping.targeted_coordinator  # noqa: F401 - Registers targeted coordinator
 from mfa.analysis.factories import AnalyzerFactory, ScrapingCoordinatorFactory
@@ -99,7 +100,7 @@ class AnalysisOrchestrator:
             logger.info(f"\n📊 Starting analysis: {analysis_id}")
 
             # 1. Create analyzer with injected config provider
-            analyzer = AnalyzerFactory.create_analyzer(analysis_config.type, self.config_provider)
+            analyzer = AnalyzerFactory.create_analyzer(analysis_id, self.config_provider)
 
             # 2. Get data requirements (analyzer reads config directly)
             requirements = analyzer.get_data_requirements()
@@ -175,7 +176,7 @@ class AnalysisOrchestrator:
         for name, analysis_config in config.analyses.items():
             status[name] = {
                 "enabled": analysis_config.enabled,
-                "type": analysis_config.type,
+                "type": name,
                 "strategy": analysis_config.data_requirements.scraping_strategy,
             }
 
@@ -205,13 +206,16 @@ class AnalysisOrchestrator:
             "file_paths": dict[str, list[str]](),
         }
 
+        # Determine analysis folder from metadata (e.g., 'holdings', 'portfolio')
+        analysis_folder = requirements.metadata.get("analysis_id", "holdings")
+
         if requirements.strategy.value == "categories":
             # Discover files organized by categories
             categories = requirements.metadata.get("categories", {})
 
             for category, _urls in categories.items():
                 category_files = []
-                base_dir = Path(config.paths.output_dir) / date_str / "holdings" / category
+                base_dir = Path(config.paths.output_dir) / date_str / analysis_folder / category
 
                 if base_dir.exists():
                     # Find all JSON files in this category directory
@@ -226,19 +230,13 @@ class AnalysisOrchestrator:
                 scraped_data_info["file_paths"][category] = category_files
 
         elif requirements.strategy.value == "targeted_funds":
-            # Discover files for targeted strategy
-            base_dir = (
-                Path(config.paths.output_dir)
-                / "extracted_json"
-                / date_str
-                / "holdings"
-                / "targeted"
-            )
+            # Discover files for targeted strategy under analysis folder
+            base_dir = Path(config.paths.output_dir) / date_str / analysis_folder
 
             if base_dir.exists():
                 json_files = list(base_dir.glob("*.json"))
                 scraped_data_info["file_paths"]["targeted"] = [str(f) for f in json_files]
-                logger.debug(f"📁 Found {len(json_files)} targeted files")
+                logger.debug(f"📁 Found {len(json_files)} targeted files in '{base_dir}'")
             else:
                 logger.warning(f"📁 No data directory found for targeted strategy: {base_dir}")
                 scraped_data_info["file_paths"]["targeted"] = []

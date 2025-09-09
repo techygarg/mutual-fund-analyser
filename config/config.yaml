@@ -1,8 +1,3 @@
-# =============================================================================
-# MFA Configuration - Analysis-Driven Architecture
-# =============================================================================
-
-# Directory paths
 paths:
   output_dir: outputs/extracted_json
   analysis_dir: outputs/analysis
@@ -14,21 +9,12 @@ scraping:
   delay_between_requests: 1.0  # Seconds to wait between scraping each fund
   save_extracted_json: true    # Save intermediate scraped JSON files to disk
 
-# Output formatting
-output:
-  filename_prefix: "coin_"     # Prefix for scraped data files
-  include_date_in_folder: true # Create date-based folders (YYYYMMDD)
-
 # Analysis definitions - each analysis defines its own data requirements
 analyses:
-  holdings:
+  holdings:                    # Key IS the analyzer type (removed redundant type field)
     enabled: true
-    type: fund-holdings
-    # Note: No path_template specified, so uses smart defaults:
-    # outputs/extracted_json/{date}/holdings/{category}/ for scraped data
-    # outputs/analysis/{date}/ for analysis results
     data_requirements:
-      scraping_strategy: categories
+      scraping_strategy: api_scraping  # Will align scraping strategies later
       categories:
           largeCap:
             - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -56,7 +42,7 @@ analyses:
             - https://coin.zerodha.com/mf/fund/INF109K015M0/icici-prudential-smallcap-fund-direct-growth
             - https://coin.zerodha.com/mf/fund/INF247L01BY3/motilal-oswal-small-cap-fund-direct-growth
     params:
-      max_holdings: 10                    # Number of top holdings to extract per fund
+      max_holdings: 50                    # API can handle more efficiently
       max_companies_in_results: 100
       max_sample_funds_per_company: 10
       exclude_from_analysis:
@@ -67,25 +53,21 @@ analyses:
         - "REPO"         # Repo
         - "CBLO"         # Collateralized Borrowing
 
-  # Future portfolio analysis example with custom path template:
-  # portfolio:
-  #   enabled: false
-  #   type: portfolio-composition
-  #   data_requirements:
-  #     scraping_strategy: targeted_funds
-  #     funds:
-  #       - units: 1000
-  #         url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
-  #       - units: 500
-  #         url: https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
-  #   params:
-  #     max_holdings: 50                  # Portfolio analysis needs more detailed holdings
-  #     target_investment: 100000
-  #     chart_top_n: 20
-  #     exclude_from_analysis:
-  #       - "TREPS"
-  #       - "CASH"
-  #   # Optional: Custom path template (if not specified, uses smart defaults)
-  #   # Smart default for portfolio would be: outputs/extracted_json/{date}/portfolio/
-  #   # path_template: "{output_dir}/{date}/portfolio"
-  #   # analysis_output_template: "{analysis_dir}/{date}/portfolio" 
+  portfolio:          # Key IS the analyzer type (matches @register_analyzer)
+    enabled: true
+    data_requirements:
+      scraping_strategy: targeted_funds
+      funds:
+        - units: 1000
+          url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+        - units: 500
+          url: https://coin.zerodha.com/mf/fund/INF179K01YV8/hdfc-large-cap-fund-direct-growth
+        - units: 400
+          url: https://coin.zerodha.com/mf/fund/INF204K01K15/nippon-india-small-cap-fund-direct-growth
+        - units: 300
+          url: https://coin.zerodha.com/mf/fund/INF846K01EH3/axis-midcap-fund-direct-growth
+        - units: 200
+          url: https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+    params:
+      max_holdings: 50                  # Portfolio analysis needs more detailed holdings
+      chart_top_n: 20

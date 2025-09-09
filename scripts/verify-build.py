@@ -130,11 +130,11 @@ class BuildVerifier:
                 self.log_success(f"Available analyzer types: {available_types}")
 
                 # Test creating an analyzer
-                if "fund-holdings" in available_types:
-                    analyzer = AnalyzerFactory.create_analyzer("fund-holdings", config_provider)
+                if "holdings" in available_types:
+                    analyzer = AnalyzerFactory.create_analyzer("holdings", config_provider)
                     self.log_success("Analyzer factory creation")
                 else:
-                    self.log_error("fund-holdings analyzer type not found")
+                    self.log_error("holdings analyzer type not found")
             else:
                 self.log_error("No analyzer types available")
 

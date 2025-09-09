@@ -41,18 +41,18 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         # Read config directly for this analysis
         config = self.config_provider.get_config()
-        analysis_config = getattr(config.analyses, analysis_id, None)
+        analysis_config = config.get_analysis(analysis_id)
 
         if not analysis_config:
             raise ValueError(f"Analysis config not found: {analysis_id}")
 
-        max_holdings = analysis_config.params.max_holdings
+        max_holdings = analysis_config.params.max_holdings or 50
 
         self._log_scraping_start("targeted", len(urls))
 
         try:
             # Build storage config
-            storage_config = self._build_storage_config_for_targeted(analysis_config)
+            storage_config = self._build_storage_config_for_targeted(analysis_config, analysis_id)
 
             # Scrape and save to files using shared session
             results = self._scrape_urls_with_delay(urls, max_holdings, "targeted", storage_config)
@@ -73,21 +73,24 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         self._log_scraping_complete("targeted", len(results), len(urls))
         return scraped_data
 
-    def _build_storage_config_for_targeted(self, analysis_config: Any) -> dict[str, Any]:
+    def _build_storage_config_for_targeted(
+        self, analysis_config: Any, analysis_id: str
+    ) -> dict[str, Any]:
         """Build storage configuration for targeted scraping."""
         config = self.config_provider.get_config()
+
+        # Use analysis_id directly, but map portfolio to portfolio folder
+        analysis_type_value = "portfolio" if analysis_id == "portfolio" else analysis_id
 
         storage_config = {
             "should_save": True,
             "base_dir": config.paths.output_dir,
-            "category": "targeted",  # No specific category for targeted scraping
-            "filename_prefix": config.output.filename_prefix,
-            "analysis_type": analysis_config.type.split("-")[-1],
+            # For portfolio analysis we do not want a nested category folder
+            # so keep category empty to make path: {output_dir}/{date}/{analysis_type}
+            "category": "",
+            "filename_prefix": "coin_",
+            "analysis_type": analysis_type_value,
         }
-
-        # Add custom path template if specified
-        if hasattr(analysis_config, "path_template") and analysis_config.path_template:
-            storage_config["path_template"] = analysis_config.path_template
 
         return storage_config
 
@@ -97,30 +100,22 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         """Generate the expected file paths where scraped data was saved."""
         from datetime import datetime
 
-        file_paths = []
+        file_paths: list[str] = []
         date_str = datetime.now().strftime("%Y%m%d")
 
+        # Create analysis config for path generation
+        analysis_config = {
+            "type": storage_config.get("analysis_type", "default"),
+            "path_template": storage_config.get("path_template"),
+        }
+
         for url in urls:
-            # Use the same logic as PathGenerator to predict file paths
-            fund_identifier = self.path_generator._generate_filename_from_url(url)
-            filename = f"{storage_config['filename_prefix']}{fund_identifier}.json"
-
-            # Build directory path (same logic as PathGenerator)
-            if storage_config.get("path_template"):
-                directory_path = self.path_generator._resolve_path_template(
-                    storage_config["path_template"],
-                    storage_config["base_dir"],
-                    date_str,
-                    storage_config["analysis_type"],
-                    storage_config["category"],
-                )
-            else:
-                # Use smart defaults
-                directory_path = (
-                    f"{storage_config['base_dir']}/{date_str}/{storage_config['analysis_type']}"
-                )
-
-            file_path = f"{directory_path}/{filename}"
-            file_paths.append(file_path)
+            file_path = self.path_generator.generate_scraped_data_path(
+                url=url,
+                category=storage_config.get("category", ""),
+                analysis_config=analysis_config,
+                date_str=date_str,
+            )
+            file_paths.append(str(file_path))
 
         return file_paths

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holdings_extracted_data",
+  "title": "Holdings Extracted Data",
+  "description": "Schema for extracted JSON files from holdings scraping",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "fund_info": {
+          "$ref": "#/$defs/fund_info"
+        },
+        "top_holdings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/holding"
+          },
+          "description": "Array of top holdings"
+        }
+      },
+      "required": ["fund_info", "top_holdings"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["data"],
+  "additionalProperties": true,
+  "$defs": {
+    "fund_info": {
+      "type": "object",
+      "properties": {
+        "fund_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the mutual fund"
+        },
+        "aum": {
+          "type": "string",
+          "description": "Assets under management (can be string with units)"
+        }
+      },
+      "required": ["fund_name", "aum"],
+      "additionalProperties": true
+    },
+    "holding": {
+      "type": "object",
+      "properties": {
+        "company_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the company/security"
+        },
+        "allocation_percentage": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "integer"}
+          ],
+          "description": "Allocation percentage (can be string, float, or int)"
+        }
+      },
+      "required": ["company_name", "allocation_percentage"],
+      "additionalProperties": true
+    }
+  }
+}

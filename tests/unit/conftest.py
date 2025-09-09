@@ -23,9 +23,17 @@ def unit_test_config() -> Generator[dict[str, Any], None, None]:
 @pytest.fixture
 def mock_config_provider(unit_test_config: dict[str, Any]) -> Generator[ConfigProvider, None, None]:
     """Mock ConfigProvider with unit test configuration."""
-    with patch.object(ConfigProvider, "_config", unit_test_config):
-        with patch.object(ConfigProvider, "_instance", None):
-            yield ConfigProvider.get_instance()
+    # Create a temporary config file with test data
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        yaml.dump(unit_test_config, f)
+        temp_config_path = Path(f.name)
+
+    try:
+        # Create ConfigProvider with test config path
+        yield ConfigProvider(config_path=temp_config_path)
+    finally:
+        # Clean up temporary file
+        temp_config_path.unlink(missing_ok=True)
 
 
 @pytest.fixture

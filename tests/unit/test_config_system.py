@@ -29,7 +29,6 @@ class TestConfigProvider:
             "analyses": {
                 "holdings": {
                     "enabled": True,
-                    "type": "fund-holdings",
                     "data_requirements": {
                         "scraping_strategy": "categories",
                         "categories": {
@@ -97,7 +96,6 @@ class TestConfigProvider:
             assert "holdings" in config.analyses
             holdings_config = config.analyses["holdings"]
             assert holdings_config.enabled is True
-            assert holdings_config.type == "fund-holdings"
             assert holdings_config.params.max_holdings == 10
 
     def test_config_provider_handles_missing_file(self):
@@ -128,7 +126,6 @@ class TestConfigProvider:
         # Add a disabled analysis
         sample_config_data["analyses"]["disabled_analysis"] = {
             "enabled": False,
-            "type": "disabled-type",
             "data_requirements": {"scraping_strategy": "categories", "categories": {}},
             "params": {"max_holdings": 5},
         }
@@ -160,7 +157,6 @@ class TestConfigProvider:
             holdings_config = provider.get_analysis_config("holdings")
             assert holdings_config is not None
             assert holdings_config.enabled is True
-            assert holdings_config.type == "fund-holdings"
 
             # Test non-existent analysis
             nonexistent_config = provider.get_analysis_config("nonexistent")

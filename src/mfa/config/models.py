@@ -29,13 +29,6 @@ class ScrapingConfig(BaseModel):
     save_extracted_json: bool
 
 
-class OutputConfig(BaseModel):
-    """Output formatting configuration."""
-
-    filename_prefix: str
-    include_date_in_folder: bool
-
-
 class DataRequirementsConfig(BaseModel):
     """Data requirements for an analysis."""
 
@@ -64,13 +57,8 @@ class AnalysisConfig(BaseModel):
     """Configuration for a single analysis."""
 
     enabled: bool
-    type: str
     data_requirements: DataRequirementsConfig
     params: AnalysisParamsConfig
-
-    # Optional path templates for custom directory structures
-    path_template: str | None = None
-    analysis_output_template: str | None = None
 
 
 class MFAConfig(BaseModel):
@@ -78,7 +66,6 @@ class MFAConfig(BaseModel):
 
     paths: PathsConfig
     scraping: ScrapingConfig
-    output: OutputConfig
     analyses: dict[str, AnalysisConfig]
 
     def get_enabled_analyses(self) -> dict[str, AnalysisConfig]:

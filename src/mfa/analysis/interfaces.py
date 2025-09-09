@@ -21,6 +21,7 @@ class ScrapingStrategy(Enum):
 
     CATEGORIES = "categories"
     TARGETED_FUNDS = "targeted_funds"
+    API_SCRAPING = "api_scraping"
 
 
 @dataclass

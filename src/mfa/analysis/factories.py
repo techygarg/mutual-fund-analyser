@@ -106,3 +106,21 @@ def register_coordinator(
         return coordinator_class
 
     return decorator
+
+
+# Import and register coordinators to ensure they're available
+def _register_default_coordinators() -> None:
+    """Register default scraping coordinators."""
+    # Import here to avoid circular imports
+    from mfa.analysis.scraping.api_coordinator import APIScrapingCoordinator
+    from mfa.analysis.scraping.category_coordinator import CategoryScrapingCoordinator
+    from mfa.analysis.scraping.targeted_coordinator import TargetedScrapingCoordinator
+
+    # Register coordinators
+    ScrapingCoordinatorFactory.register_coordinator("categories", CategoryScrapingCoordinator)
+    ScrapingCoordinatorFactory.register_coordinator("targeted_funds", TargetedScrapingCoordinator)
+    ScrapingCoordinatorFactory.register_coordinator("api_scraping", APIScrapingCoordinator)
+
+
+# Auto-register coordinators when module is imported
+_register_default_coordinators()

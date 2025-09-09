@@ -24,6 +24,7 @@ classifiers = [
 dependencies = [
   # scraping
   "playwright>=1.45.0,<2.0.0",
+  "requests>=2.31.0,<3.0.0",
 
   # web dashboard
   "fastapi>=0.110.0,<1.0.0",
@@ -37,6 +38,9 @@ dependencies = [
   "pyyaml>=6.0.0,<7.0.0",
   "loguru>=0.7.2,<1.0.0",
   "pandas>=2.2.0,<3.0.0",
+  
+  # validation
+  "jsonschema>=4.22.0,<5.0.0",
 ]
 
 [project.optional-dependencies]
