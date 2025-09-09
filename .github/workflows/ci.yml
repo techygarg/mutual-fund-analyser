@@ -74,7 +74,6 @@ jobs:
       uses: ./.github/actions/setup-python
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        install-playwright: 'true'
         
     - name: "🧪 Run integration tests"
       run: .github/scripts/test-integration.sh
@@ -89,26 +88,26 @@ jobs:
           *.log
 
   # Job 4: Test Summary & Status Check - Runs After All Tests Complete
-  test-summary:
-    name: "📋 Test Summary"
-    runs-on: ubuntu-latest
-    needs: [lint, unit-tests, integration-tests]
-    if: always()
+  # test-summary:
+  #   name: "📋 Test Summary"
+  #   runs-on: ubuntu-latest
+  #   needs: [lint, unit-tests, integration-tests]
+  #   if: always()
     
-    steps:
-    - name: "✅ All tests passed"
-      if: ${{ needs.lint.result == 'success' && needs.unit-tests.result == 'success' && needs.integration-tests.result == 'success' }}
-      run: |
-        echo "🎉 All CI checks passed successfully!"
-        echo "✅ Code Quality: PASSED"
-        echo "✅ Unit Tests: PASSED" 
-        echo "✅ Integration Tests: PASSED"
+  #   steps:
+  #   - name: "✅ All tests passed"
+  #     if: ${{ needs.lint.result == 'success' && needs.unit-tests.result == 'success' && needs.integration-tests.result == 'success' }}
+  #     run: |
+  #       echo "🎉 All CI checks passed successfully!"
+  #       echo "✅ Code Quality: PASSED"
+  #       echo "✅ Unit Tests: PASSED" 
+  #       echo "✅ Integration Tests: PASSED"
         
-    - name: "❌ Some tests failed"
-      if: ${{ needs.lint.result != 'success' || needs.unit-tests.result != 'success' || needs.integration-tests.result != 'success' }}
-      run: |
-        echo "❌ Some CI checks failed!"
-        echo "Code Quality: ${{ needs.lint.result }}"
-        echo "Unit Tests: ${{ needs.unit-tests.result }}"
-        echo "Integration Tests: ${{ needs.integration-tests.result }}"
-        exit 1
+  #   - name: "❌ Some tests failed"
+  #     if: ${{ needs.lint.result != 'success' || needs.unit-tests.result != 'success' || needs.integration-tests.result != 'success' }}
+  #     run: |
+  #       echo "❌ Some CI checks failed!"
+  #       echo "Code Quality: ${{ needs.lint.result }}"
+  #       echo "Unit Tests: ${{ needs.unit-tests.result }}"
+  #       echo "Integration Tests: ${{ needs.integration-tests.result }}"
+  #       exit 1
