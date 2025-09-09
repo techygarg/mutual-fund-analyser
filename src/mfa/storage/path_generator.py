@@ -13,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 
 from mfa.config.settings import ConfigProvider
-from mfa.core.exceptions import PathGenerationError
 
 
 class PathGenerator:
@@ -59,23 +58,13 @@ class PathGenerator:
         config = self.config_provider.get_config()
         base_dir = config.paths.output_dir
 
-        # Use custom template if provided, otherwise smart defaults
-        if analysis_config and analysis_config.get("path_template"):
-            directory_path = self._resolve_path_template(
-                analysis_config["path_template"],
-                base_dir,
-                date_str,
-                analysis_config.get("type", "").split("-")[-1],  # Extract analysis type
-                category,
-            )
-        else:
-            # Smart defaults based on analysis type and category
-            analysis_type = (
-                analysis_config.get("type", "").split("-")[-1] if analysis_config else "default"
-            )
-            directory_path = self._generate_smart_default_path(
-                base_dir, date_str, analysis_type, category
-            )
+        # Smart defaults based on analysis type and category
+        analysis_type = (
+            analysis_config.get("type", "").split("-")[-1] if analysis_config else "default"
+        )
+        directory_path = self._generate_smart_default_path(
+            base_dir, date_str, analysis_type, category
+        )
 
         # Generate filename from URL
         filename = self._generate_filename_from_url(url)
@@ -104,60 +93,12 @@ class PathGenerator:
         base_dir = config.paths.analysis_dir
 
         # Use custom template if provided, otherwise smart defaults
-        if analysis_config and analysis_config.get("analysis_output_template"):
-            directory_path = self._resolve_path_template(
-                analysis_config["analysis_output_template"],
-                base_dir,
-                date_str,
-                analysis_config.get("type", "").split("-")[-1],
-                category,
-            )
-        else:
-            # Smart defaults for analysis outputs - should be flat under analysis_type
-            analysis_type = analysis_config.get("type", "unknown") if analysis_config else "unknown"
-            # For analysis outputs, we want: base_dir/date/analysis_type/ (no category subdirectory)
-            directory_path = f"{base_dir}/{date_str}/{analysis_type}"
+        # Smart defaults for analysis outputs - should be flat under analysis_type
+        analysis_type = analysis_config.get("type", "unknown") if analysis_config else "unknown"
+        # For analysis outputs, we want: base_dir/date/analysis_type/ (no category subdirectory)
+        directory_path = f"{base_dir}/{date_str}/{analysis_type}"
 
         return Path(directory_path) / f"{category}.json"
-
-    def _resolve_path_template(
-        self, template: str, base_dir: str, date_str: str, analysis_type: str, category: str
-    ) -> str:
-        """
-        Resolve a path template with variable substitution.
-
-        Args:
-            template: Path template with variables (e.g., "{base_dir}/{date}/{analysis_type}")
-            base_dir: Base output directory
-            date_str: Date string (YYYYMMDD format)
-            analysis_type: Type of analysis
-            category: Fund category (may be empty for non-categorized analyses)
-
-        Returns:
-            str: Resolved directory path
-
-        Raises:
-            PathGenerationError: If template contains unknown variables
-        """
-        # Available template variables
-        template_vars = {
-            "base_dir": base_dir,
-            "output_dir": base_dir,  # Alias for backwards compatibility
-            "analysis_dir": base_dir,  # For analysis output paths
-            "date": date_str,
-            "analysis_type": analysis_type,
-            "category": category if category else "",
-        }
-
-        try:
-            resolved_path = template.format(**template_vars)
-            # Clean up path separators and remove trailing slashes
-            resolved_path = re.sub(r"/+", "/", resolved_path)
-            return resolved_path.rstrip("/")
-        except KeyError as e:
-            raise PathGenerationError(
-                f"Unknown template variable in path template '{template}': {e}"
-            ) from e
 
     def _generate_smart_default_path(
         self, base_dir: str, date_str: str, analysis_type: str, category: str
@@ -210,9 +151,8 @@ class PathGenerator:
                 r"[^a-zA-Z0-9_-]", "_", url.split("/")[-1] if "/" in url else url
             )
 
-        # Get filename prefix from config
-        config = self.config_provider.get_config()
-        prefix = config.output.filename_prefix
+        # Use hardcoded filename prefix for Zerodha Coin files
+        prefix = "coin_"
 
         return f"{prefix}{fund_identifier}.json"
 

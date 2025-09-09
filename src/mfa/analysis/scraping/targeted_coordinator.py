@@ -52,7 +52,7 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         try:
             # Build storage config
-            storage_config = self._build_storage_config_for_targeted(analysis_config)
+            storage_config = self._build_storage_config_for_targeted(analysis_config, analysis_id)
 
             # Scrape and save to files using shared session
             results = self._scrape_urls_with_delay(urls, max_holdings, "targeted", storage_config)
@@ -73,16 +73,14 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         self._log_scraping_complete("targeted", len(results), len(urls))
         return scraped_data
 
-    def _build_storage_config_for_targeted(self, analysis_config: Any) -> dict[str, Any]:
+    def _build_storage_config_for_targeted(
+        self, analysis_config: Any, analysis_id: str
+    ) -> dict[str, Any]:
         """Build storage configuration for targeted scraping."""
         config = self.config_provider.get_config()
 
-        # Derive analysis folder name. For portfolio, force folder name 'portfolio'
-        analysis_type_value = (
-            "portfolio"
-            if getattr(analysis_config, "type", "") == "portfolio-composition"
-            else analysis_config.type.split("-")[-1]
-        )
+        # Use analysis_id directly, but map portfolio to portfolio folder
+        analysis_type_value = "portfolio" if analysis_id == "portfolio" else analysis_id
 
         storage_config = {
             "should_save": True,
@@ -90,13 +88,9 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             # For portfolio analysis we do not want a nested category folder
             # so keep category empty to make path: {output_dir}/{date}/{analysis_type}
             "category": "",
-            "filename_prefix": config.output.filename_prefix,
+            "filename_prefix": "coin_",
             "analysis_type": analysis_type_value,
         }
-
-        # Add custom path template if specified
-        if hasattr(analysis_config, "path_template") and analysis_config.path_template:
-            storage_config["path_template"] = analysis_config.path_template
 
         return storage_config
 

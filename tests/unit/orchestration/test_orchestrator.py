@@ -20,7 +20,7 @@ class TestAnalysisOrchestrator:
 
         # Mock config with enabled analysis
         mock_config = Mock()
-        mock_config.analyses = {"holdings": Mock(enabled=True, type="fund-holdings")}
+        mock_config.analyses = {"holdings": Mock(enabled=True)}
         mock_config.get_enabled_analyses.return_value = mock_config.analyses
 
         # Add paths to prevent mock object directory creation
@@ -89,7 +89,7 @@ class TestAnalysisOrchestrator:
 
         # Mock analysis config
         mock_analysis_config = Mock()
-        mock_analysis_config.type = "fund-holdings"
+        # mock_analysis_config type no longer needed
 
         # Mock analyzer
         mock_analyzer = Mock()
@@ -118,7 +118,7 @@ class TestAnalysisOrchestrator:
                 orchestrator._run_single_analysis("holdings", mock_analysis_config, "20240903")
 
                 # Verify the flow
-                mock_create_analyzer.assert_called_once_with("fund-holdings", mock_config_provider)
+                mock_create_analyzer.assert_called_once_with("holdings", mock_config_provider)
                 mock_analyzer.get_data_requirements.assert_called_once()
                 mock_scrape.assert_called_once_with(mock_requirements, "20240903")
                 mock_analyzer.analyze.assert_called_once_with(
@@ -151,7 +151,7 @@ class TestAnalysisOrchestrator:
         orchestrator = AnalysisOrchestrator(mock_config_provider)
 
         mock_analysis_config = Mock()
-        mock_analysis_config.type = "fund-holdings"
+        # mock_analysis_config type no longer needed
 
         # Mock analyzer to raise an exception
         mock_analyzer = Mock()
@@ -181,10 +181,10 @@ class TestAnalysisOrchestrator:
         orchestrator = AnalysisOrchestrator(mock_config_provider)
 
         mock_config = mock_config_provider.get_config.return_value
-        mock_config.analyses = {"holdings": Mock(enabled=True, type="fund-holdings")}
+        mock_config.analyses = {"holdings": Mock(enabled=True)}
 
         status = orchestrator.get_analysis_status()
 
         assert "holdings" in status
         assert status["holdings"]["enabled"] is True
-        assert status["holdings"]["type"] == "fund-holdings"
+        assert status["holdings"]["type"] == "holdings"

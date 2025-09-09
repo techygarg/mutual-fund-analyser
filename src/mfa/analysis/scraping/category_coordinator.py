@@ -68,7 +68,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
                 # Scrape and save to files using shared session
                 category_results, file_paths = self._scrape_and_save_category(
-                    urls, category, max_holdings, analysis_config
+                    urls, category, max_holdings, analysis_config, analysis_id
                 )
 
                 # Store both in-memory data (for compatibility) and file paths
@@ -89,7 +89,12 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         return scraped_data
 
     def _scrape_and_save_category(
-        self, urls: list[str], category: str, max_holdings: int, analysis_config: Any
+        self,
+        urls: list[str],
+        category: str,
+        max_holdings: int,
+        analysis_config: Any,
+        analysis_id: str,
     ) -> tuple[list[dict[str, Any]], list[str]]:
         """
         Scrape URLs for a category and save to files.
@@ -98,7 +103,9 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             tuple: (scraped_data_list, file_paths_list)
         """
         # Build storage config for this category
-        storage_config = self._build_storage_config_for_category(category, analysis_config)
+        storage_config = self._build_storage_config_for_category(
+            category, analysis_config, analysis_id
+        )
 
         # Scrape with file saving enabled
         category_results = self._scrape_urls_with_delay(
@@ -111,7 +118,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         return category_results, file_paths
 
     def _build_storage_config_for_category(
-        self, category: str, analysis_config: Any
+        self, category: str, analysis_config: Any, analysis_id: str
     ) -> dict[str, Any]:
         """Build storage configuration for a specific category."""
         config = self.config_provider.get_config()
@@ -120,8 +127,8 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             "should_save": True,  # Always save for file-based analysis
             "base_dir": config.paths.output_dir,
             "category": category,
-            "filename_prefix": config.output.filename_prefix,
-            "analysis_type": analysis_config.type.split("-")[-1],  # "fund-holdings" -> "holdings"
+            "filename_prefix": "coin_",
+            "analysis_type": analysis_id,  # Use analysis_id directly
         }
 
         # Add custom path template if specified

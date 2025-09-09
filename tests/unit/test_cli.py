@@ -97,7 +97,7 @@ class TestCLIAnalyze:
         mock_orchestrator = Mock()
         mock_orchestrator_class.return_value = mock_orchestrator
         mock_orchestrator.get_analysis_status.return_value = {
-            "holdings": {"enabled": True, "type": "fund-holdings", "strategy": "categories"}
+            "holdings": {"enabled": True, "strategy": "categories"}
         }
 
         with patch("builtins.print"):

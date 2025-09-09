@@ -100,7 +100,7 @@ class AnalysisOrchestrator:
             logger.info(f"\n📊 Starting analysis: {analysis_id}")
 
             # 1. Create analyzer with injected config provider
-            analyzer = AnalyzerFactory.create_analyzer(analysis_config.type, self.config_provider)
+            analyzer = AnalyzerFactory.create_analyzer(analysis_id, self.config_provider)
 
             # 2. Get data requirements (analyzer reads config directly)
             requirements = analyzer.get_data_requirements()
@@ -176,7 +176,7 @@ class AnalysisOrchestrator:
         for name, analysis_config in config.analyses.items():
             status[name] = {
                 "enabled": analysis_config.enabled,
-                "type": analysis_config.type,
+                "type": name,
                 "strategy": analysis_config.data_requirements.scraping_strategy,
             }
 

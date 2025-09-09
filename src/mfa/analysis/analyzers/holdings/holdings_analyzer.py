@@ -73,8 +73,12 @@ class HoldingsAnalyzer(BaseAnalyzer):
         # Sanitize and deduplicate
         urls = sorted({u.strip() for u in all_urls if isinstance(u, str) and u.strip()})
 
+        # Get scraping strategy from config
+        strategy_str = holdings_config.data_requirements.scraping_strategy
+        strategy = ScrapingStrategy(strategy_str)
+
         return DataRequirement(
-            strategy=ScrapingStrategy.API_SCRAPING,
+            strategy=strategy,
             urls=urls,
             metadata={
                 "categories": categories,

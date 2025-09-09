@@ -16,12 +16,12 @@ from .data_processor import PortfolioDataProcessor
 from .output_builder import PortfolioOutputBuilder
 
 
-@register_analyzer("portfolio-composition")
+@register_analyzer("portfolio")
 class PortfolioAnalyzer(BaseAnalyzer):
     """Analyzer for portfolio composition across funds by units and NAV."""
 
     def __init__(self, config_provider: ConfigProvider):
-        super().__init__(config_provider, "portfolio-composition")
+        super().__init__(config_provider, "portfolio")
         self.path_generator = PathGenerator(config_provider)
         self.data_processor = PortfolioDataProcessor(config_provider)
         self.aggregator = PortfolioAggregator(config_provider)

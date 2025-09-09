@@ -6,17 +6,41 @@ paths:
   output_dir: outputs/extracted_json
   analysis_dir: outputs/analysis
 
-# Analysis preferences for unit testing
-analysis:
-  max_companies_in_results: 10      # Small number for testing
-  max_sample_funds_per_company: 3   # Small number for testing
-  exclude_from_analysis:
-    - "TREPS"        # Treasury Repo
-    - "CASH"         # Cash holdings  
-    - "T-BILLS"      # Treasury Bills
-    - "REVERSE REPO" # Reverse Repo
+# Global scraping settings
+scraping:
+  headless: true
+  timeout_seconds: 10
+  delay_between_requests: 0.1
+  save_extracted_json: true
 
-# Output formatting
-output:
-  filename_prefix: "test_"
-  include_date_in_folder: true
+# Analysis definitions
+analyses:
+  holdings:
+    enabled: true
+    data_requirements:
+      scraping_strategy: categories
+      categories:
+        largeCap:
+          - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+        midCap:
+          - https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+    params:
+      max_holdings: 10
+      max_companies_in_results: 10
+      max_sample_funds_per_company: 3
+      exclude_from_analysis:
+        - "TREPS"
+        - "CASH" 
+        - "T-BILLS"
+        - "REVERSE REPO"
+
+  portfolio:
+    enabled: true
+    data_requirements:
+      scraping_strategy: targeted_funds
+      funds:
+        - units: 100
+          url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+    params:
+      max_holdings: 10
+      chart_top_n: 5

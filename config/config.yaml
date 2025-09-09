@@ -9,21 +9,12 @@ scraping:
   delay_between_requests: 1.0  # Seconds to wait between scraping each fund
   save_extracted_json: true    # Save intermediate scraped JSON files to disk
 
-# Output formatting
-output:
-  filename_prefix: "coin_"     # Prefix for scraped data files
-  include_date_in_folder: true # Create date-based folders (YYYYMMDD)
-
 # Analysis definitions - each analysis defines its own data requirements
 analyses:
-  holdings:
+  holdings:                    # Key IS the analyzer type (removed redundant type field)
     enabled: true
-    type: holdings
-    # Note: No path_template specified, so uses smart defaults:
-    # outputs/extracted_json/{date}/holdings/{category}/ for scraped data
-    # outputs/analysis/{date}/ for analysis results
     data_requirements:
-      scraping_strategy: api_scraping
+      scraping_strategy: api_scraping  # Will align scraping strategies later
       categories:
           largeCap:
             - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -51,7 +42,7 @@ analyses:
             - https://coin.zerodha.com/mf/fund/INF109K015M0/icici-prudential-smallcap-fund-direct-growth
             - https://coin.zerodha.com/mf/fund/INF247L01BY3/motilal-oswal-small-cap-fund-direct-growth
     params:
-      max_holdings: 50                    # Increased from 10 to 50 (API can handle more efficiently)
+      max_holdings: 50                    # API can handle more efficiently
       max_companies_in_results: 100
       max_sample_funds_per_company: 10
       exclude_from_analysis:
@@ -61,9 +52,9 @@ analyses:
         - "REVERSE REPO" # Reverse Repo
         - "REPO"         # Repo
         - "CBLO"         # Collateralized Borrowing
-  portfolio:
+
+  portfolio:          # Key IS the analyzer type (matches @register_analyzer)
     enabled: true
-    type: portfolio
     data_requirements:
       scraping_strategy: targeted_funds
       funds:
