@@ -107,6 +107,7 @@ def validate_portfolio_extracted_data(extracted_dir: Path) -> None:
 # Portfolio-Specific Business Logic Validation
 # =============================================================================
 
+
 def validate_portfolio_business_logic(data: Dict[str, Any]) -> None:
     """
     Validate portfolio-specific business logic rules.
@@ -126,17 +127,17 @@ def _validate_portfolio_value_consistency(data: Dict[str, Any]) -> None:
     """Validate that portfolio values are mathematically consistent."""
     portfolio_summary = data["portfolio_summary"]
     funds = data["funds"]
-    
+
     # Check that total_value matches sum of fund values
     expected_total = sum(fund["value"] for fund in funds)
     actual_total = portfolio_summary["total_value"]
-    
+
     # Allow small rounding differences (within 1% or 100 units)
     tolerance = max(100, actual_total * 0.01)
     assert abs(actual_total - expected_total) <= tolerance, (
         f"Portfolio total value ({actual_total}) should match sum of fund values ({expected_total})"
     )
-    
+
     # Check fund_count matches actual number of funds
     assert portfolio_summary["fund_count"] == len(funds), (
         f"Fund count ({portfolio_summary['fund_count']}) should match actual funds ({len(funds)})"
@@ -147,7 +148,7 @@ def _validate_portfolio_allocation_sorting(data: Dict[str, Any]) -> None:
     """Validate that portfolio allocations are sorted correctly."""
     company_allocations = data["company_allocations"]
     top_companies = data["top_companies"]
-    
+
     # Validate company_allocations are sorted by amount (descending)
     if len(company_allocations) >= 2:
         for i in range(len(company_allocations) - 1):
@@ -156,16 +157,14 @@ def _validate_portfolio_allocation_sorting(data: Dict[str, Any]) -> None:
             assert current["amount"] >= next_item["amount"], (
                 "company_allocations should be sorted by amount desc"
             )
-    
+
     # Validate top_companies are subset of company_allocations (top N items)
     portfolio_summary = data["portfolio_summary"]
     top_n = portfolio_summary["top_n"]
     expected_top_companies = company_allocations[:top_n]
-    
-    assert len(top_companies) <= top_n, (
-        f"top_companies should have at most {top_n} items"
-    )
-    
+
+    assert len(top_companies) <= top_n, f"top_companies should have at most {top_n} items"
+
     # Validate top_companies match the first N from company_allocations
     for i, (expected, actual) in enumerate(zip(expected_top_companies, top_companies)):
         assert expected["company_name"] == actual["company_name"], (
@@ -178,7 +177,7 @@ def _validate_portfolio_percentage_calculations(data: Dict[str, Any]) -> None:
     portfolio_summary = data["portfolio_summary"]
     company_allocations = data["company_allocations"]
     total_value = portfolio_summary["total_value"]
-    
+
     if total_value == 0:
         # If total value is 0, all percentages should be 0
         for company in company_allocations:
@@ -186,12 +185,12 @@ def _validate_portfolio_percentage_calculations(data: Dict[str, Any]) -> None:
                 f"Company {company['company_name']} should have 0% when total value is 0"
             )
         return
-    
+
     # Check percentage calculations
     for company in company_allocations:
         expected_percentage = (company["amount"] / total_value) * 100
         actual_percentage = company["percentage"]
-        
+
         # Allow small rounding differences (within 0.1%)
         assert abs(actual_percentage - expected_percentage) <= 0.1, (
             f"Company {company['company_name']} percentage calculation incorrect: "
@@ -202,14 +201,14 @@ def _validate_portfolio_percentage_calculations(data: Dict[str, Any]) -> None:
 def _validate_portfolio_fund_contributions(data: Dict[str, Any]) -> None:
     """Validate fund contribution data is consistent."""
     company_allocations = data["company_allocations"]
-    
+
     for company in company_allocations:
         from_funds = company["from_funds"]
-        
+
         # Check that sum of contributions equals company amount
         total_contributions = sum(fund["contribution"] for fund in from_funds)
         company_amount = company["amount"]
-        
+
         # Allow small rounding differences
         assert abs(total_contributions - company_amount) <= 10, (
             f"Company {company['company_name']} contributions ({total_contributions}) "
@@ -220,6 +219,7 @@ def _validate_portfolio_fund_contributions(data: Dict[str, Any]) -> None:
 # =============================================================================
 # Portfolio Schema Validation Functions
 # =============================================================================
+
 
 def validate_portfolio_analysis_file(json_file: Path) -> Dict[str, Any]:
     """
