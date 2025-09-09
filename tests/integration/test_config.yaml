@@ -13,18 +13,12 @@ scraping:
   delay_between_requests: 1.0 # Minimal delay for testing
   save_extracted_json: false  # Disable JSON saving for faster tests
 
-# Output formatting
-output:
-  filename_prefix: "coin_"
-  include_date_in_folder: true
-
 # Analysis definitions - minimal setup for testing
 analyses:
   holdings:
     enabled: true
-    type: fund-holdings
     data_requirements:
-      scraping_strategy: categories
+      scraping_strategy:  api_scraping
       categories:
         largeCap:
           - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -39,3 +33,15 @@ analyses:
         - "CASH"         # Cash holdings  
         - "T-BILLS"      # Treasury Bills
         - "REVERSE REPO" # Reverse Repo
+  portfolio:          # Key IS the analyzer type (matches @register_analyzer)
+    enabled: true
+    data_requirements:
+      scraping_strategy: targeted_funds
+      funds:
+        - units: 1000
+          url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
+        - units: 500
+          url: https://coin.zerodha.com/mf/fund/INF179K01XQ0/hdfc-mid-cap-fund-direct-growth
+    params:
+      max_holdings: 50                  # Portfolio analysis needs more detailed holdings
+      chart_top_n: 20

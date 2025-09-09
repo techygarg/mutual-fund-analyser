@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holdings_analysis_output",
+  "title": "Holdings Analysis Output",
+  "description": "Schema for holdings analysis output files (dashboard-compatible format)",
+  "type": "object",
+  "properties": {
+    "total_files": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of files processed"
+    },
+    "total_funds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of funds analyzed"
+    },
+    "unique_companies": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of unique companies found"
+    },
+    "funds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fund"
+      },
+      "description": "Array of fund information"
+    },
+    "top_by_fund_count": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/company"
+      },
+      "description": "Companies sorted by fund count (descending)"
+    },
+    "top_by_total_weight": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/company"
+      },
+      "description": "Companies sorted by total weight (descending)"
+    },
+    "common_in_all_funds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/company"
+      },
+      "description": "Companies that appear in all funds"
+    }
+  },
+  "required": [
+    "total_files",
+    "total_funds", 
+    "unique_companies",
+    "funds",
+    "top_by_fund_count",
+    "top_by_total_weight",
+    "common_in_all_funds"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "fund": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Fund name"
+        },
+        "aum": {
+          "type": "string",
+          "description": "Assets under management"
+        }
+      },
+      "required": ["name", "aum"],
+      "additionalProperties": false
+    },
+    "company": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Company name"
+        },
+        "company": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Company name (duplicate for dashboard compatibility)"
+        },
+        "fund_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of funds holding this company"
+        },
+        "total_weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total allocation weight across all funds"
+        },
+        "avg_weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average allocation weight"
+        },
+        "sample_funds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Sample fund names containing this company"
+        }
+      },
+      "required": [
+        "name",
+        "company", 
+        "fund_count",
+        "total_weight",
+        "avg_weight",
+        "sample_funds"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
