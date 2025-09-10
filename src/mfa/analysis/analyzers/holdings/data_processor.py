@@ -7,13 +7,14 @@ structured holdings data for analysis using proper dependency injection.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
 from mfa.core.exceptions import ConfigurationError
 from mfa.logging.logger import logger
+
+from ..utils.data_processor_utils import DataProcessorUtils
 
 
 @dataclass
@@ -97,13 +98,13 @@ class HoldingsDataProcessor:
             for holding_data in top_holdings:
                 company_name = holding_data.get("company_name", "").strip()
 
-                # Skip excluded holdings
-                if self._is_excluded_holding(company_name, excluded_holdings):
+                # Skip excluded holdings using utility
+                if DataProcessorUtils.is_excluded_holding(company_name, excluded_holdings):
                     continue
 
-                # Parse allocation percentage
+                # Parse allocation percentage using utility
                 allocation_str = holding_data.get("allocation_percentage", "0%")
-                allocation_pct = self._parse_percentage(allocation_str)
+                allocation_pct = DataProcessorUtils.parse_percentage(allocation_str)
 
                 # Get rank (coerce to int defensively)
                 raw_rank = holding_data.get("rank", 0)
@@ -113,8 +114,8 @@ class HoldingsDataProcessor:
                     rank = 0
 
                 if company_name and allocation_pct > 0:
-                    # Normalize company name to avoid duplicates
-                    normalized_name = self._normalize_company_name(company_name)
+                    # Normalize company name using utility
+                    normalized_name = DataProcessorUtils.normalize_company_name(company_name)
                     processed_holdings.append(
                         ProcessedHolding(
                             company_name=normalized_name,
@@ -130,66 +131,3 @@ class HoldingsDataProcessor:
             logger.warning(f"Error processing fund {fund_json.get('source_url', 'unknown')}: {e}")
 
         return None
-
-    def _is_excluded_holding(self, company_name: str, excluded_holdings: set) -> bool:
-        """Check if a holding should be excluded from analysis."""
-        company_upper = company_name.upper()
-        return any(excluded.upper() in company_upper for excluded in excluded_holdings)
-
-    def _normalize_company_name(self, company_name: str) -> str:
-        """
-        Normalize company name by removing common suffixes and standardizing format.
-
-        This helps avoid duplicate companies due to slight name variations.
-
-        Args:
-            company_name: Raw company name from fund data
-
-        Returns:
-            Normalized company name
-        """
-        if not company_name:
-            return company_name
-
-        # Remove leading/trailing whitespace
-        normalized = company_name.strip()
-
-        # Apply suffix removal using precompiled patterns
-        for pattern in _SUFFIX_PATTERNS:
-            normalized = pattern.sub("", normalized)
-
-        # Clean up any remaining trailing dots or spaces (precompiled)
-        normalized = _TRAILING_DOTS_SPACES_PATTERN.sub("", normalized)
-
-        # Ensure we don't return empty string
-        if not normalized.strip():
-            return company_name
-
-        return normalized.strip()
-
-    def _parse_percentage(self, percentage_str: str) -> float:
-        """Parse percentage string to float value."""
-        try:
-            # Remove % sign and any whitespace
-            clean_str = _PERCENT_WS_PATTERN.sub("", percentage_str)
-            return float(clean_str)
-        except (ValueError, TypeError):
-            return 0.0
-
-
-# Precompiled regex patterns (module-level) for performance
-_SUFFIX_PATTERNS = [
-    re.compile(r"\s+Limited\s*$", re.IGNORECASE),
-    re.compile(r"\s+Ltd\.?\s*$", re.IGNORECASE),
-    re.compile(r"\s+Pvt\.?\s*$", re.IGNORECASE),
-    re.compile(r"\s+Private\s+Limited\s*$", re.IGNORECASE),
-    re.compile(r"\s+Pvt\.?\s+Ltd\.?\s*$", re.IGNORECASE),
-    re.compile(r"\s+Inc\.?\s*$", re.IGNORECASE),
-    re.compile(r"\s+Corporation\s*$", re.IGNORECASE),
-    re.compile(r"\s+Corp\.?\s*$", re.IGNORECASE),
-    re.compile(r"\s+Company\s*$", re.IGNORECASE),
-    re.compile(r"\s+Co\.?\s*$", re.IGNORECASE),
-]
-
-_TRAILING_DOTS_SPACES_PATTERN = re.compile(r"[\.\s]+$")
-_PERCENT_WS_PATTERN = re.compile(r"[%\s]")

@@ -52,14 +52,14 @@ class APIScraperAdapter:
         """Scrape using API scraper and convert result to dict."""
         result = self._scraper.scrape(url, max_holdings, storage_config)
         # Convert ExtractedFundDocument to dict if needed
-        if hasattr(result, 'model_dump'):
+        if hasattr(result, "model_dump"):
             return result.model_dump(mode="json")
         # This should not happen, but handle it gracefully
         return dict(result) if result else {}
 
     def close(self) -> None:
         """Close API scraper."""
-        if hasattr(self._scraper, 'close'):
+        if hasattr(self._scraper, "close"):
             self._scraper.close()
 
 
@@ -77,7 +77,7 @@ class PlaywrightScraperAdapter:
 
     def close(self) -> None:
         """Close Playwright scraper."""
-        if hasattr(self._scraper, 'session') and hasattr(self._scraper.session, 'close'):
+        if hasattr(self._scraper, "session") and hasattr(self._scraper.session, "close"):
             self._scraper.session.close()
 
 
@@ -102,8 +102,12 @@ class ScraperFactory:
         config = config_provider.get_config()
 
         if scraper_type == "api":
-            logger.debug(f"🏭 Creating API scraper with {config.scraping.delay_between_requests}s delay")
-            api_scraper = ZerodhaAPIFundScraper(delay_between_requests=config.scraping.delay_between_requests)
+            logger.debug(
+                f"🏭 Creating API scraper with {config.scraping.delay_between_requests}s delay"
+            )
+            api_scraper = ZerodhaAPIFundScraper(
+                delay_between_requests=config.scraping.delay_between_requests
+            )
             return APIScraperAdapter(api_scraper)
 
         elif scraper_type == "playwright":
@@ -120,11 +124,11 @@ class ScraperFactory:
             return PlaywrightScraperAdapter(playwright_scraper)
 
         else:
-            raise ValueError(f"Unknown scraper type: {scraper_type}. Supported types: 'api', 'playwright'")
+            raise ValueError(
+                f"Unknown scraper type: {scraper_type}. Supported types: 'api', 'playwright'"
+            )
 
     @staticmethod
     def get_available_types() -> list[str]:
         """Get list of available scraper types."""
         return ["api", "playwright"]
-
-

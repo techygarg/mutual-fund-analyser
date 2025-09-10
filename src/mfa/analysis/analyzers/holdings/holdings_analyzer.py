@@ -19,6 +19,7 @@ from mfa.storage.path_generator import PathGenerator
 
 from ...factories import register_analyzer
 from ...interfaces import AnalysisResult, BaseAnalyzer, DataRequirement, ScrapingStrategy
+from ..utils.analyzer_utils import AnalyzerUtils
 from .aggregator import HoldingsAggregator
 from .data_processor import HoldingsDataProcessor
 from .output_builder import HoldingsOutputBuilder
@@ -102,30 +103,20 @@ class HoldingsAnalyzer(BaseAnalyzer):
 
         logger.info("🔍 Starting holdings analysis (file-based)")
 
-        file_paths = data_source.get("file_paths", {})
+        # Load files using utility
+        loaded_data = AnalyzerUtils.load_files_from_data_source(data_source)
+        AnalyzerUtils.validate_loaded_data(loaded_data, "holdings")
 
         output_paths = []
         summary = {
-            "total_categories": len(file_paths),
+            "total_categories": len(loaded_data),
             "categories_processed": 0,
             "total_funds": 0,
             "total_companies": 0,
         }
 
-        for category in file_paths.keys():
+        for category, fund_data_list in loaded_data.items():
             logger.info(f"📊 Analyzing category: {category}")
-
-            # Read JSON files from disk instead of using in-memory data
-            category_file_paths = file_paths[category]
-            fund_data_list = []
-
-            for file_path in category_file_paths:
-                try:
-                    fund_data = JsonStore.load(Path(file_path))
-                    fund_data_list.append(fund_data)
-                except Exception as e:
-                    logger.warning(f"Failed to load {file_path}: {e}")
-                    continue
 
             if not fund_data_list:
                 logger.warning(f"No valid data files found for category {category}")

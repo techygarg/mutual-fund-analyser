@@ -11,6 +11,7 @@ from mfa.storage.path_generator import PathGenerator
 
 from ...factories import register_analyzer
 from ...interfaces import AnalysisResult, BaseAnalyzer, DataRequirement, ScrapingStrategy
+from ..utils.analyzer_utils import AnalyzerUtils
 from .aggregator import PortfolioAggregator
 from .data_processor import PortfolioDataProcessor
 from .output_builder import PortfolioOutputBuilder
@@ -68,14 +69,11 @@ class PortfolioAnalyzer(BaseAnalyzer):
         # Build url -> units map
         url_to_units = self.data_processor.map_url_to_units(funds_cfg)
 
-        # Load JSONs
-        targeted_files = data_source.get("file_paths", {}).get("targeted", [])
-        fund_documents: list[dict[str, Any]] = []
-        for file_path in targeted_files:
-            try:
-                fund_documents.append(JsonStore.load(Path(file_path)))
-            except Exception as e:
-                logger.warning(f"Failed to load {file_path}: {e}")
+        # Load files using utility
+        loaded_data = AnalyzerUtils.load_files_from_data_source(data_source)
+
+        # Portfolio uses "targeted" key for file paths
+        fund_documents = loaded_data.get("targeted", [])
 
         if not fund_documents:
             raise ConfigurationError("No portfolio fund data files found", {"date": date})
@@ -103,5 +101,5 @@ class PortfolioAnalyzer(BaseAnalyzer):
             category="portfolio", analysis_config=analysis_config, date_str=date
         )
         JsonStore.save_with_path(data=data, file_path=output_path)
-        logger.debug(f"💾 Saved portfolio analysis to: {output_path}")
+        logger.debug(f"�� Saved portfolio analysis to: {output_path}")
         return output_path
