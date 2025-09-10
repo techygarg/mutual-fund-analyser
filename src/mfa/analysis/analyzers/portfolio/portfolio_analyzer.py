@@ -40,8 +40,12 @@ class PortfolioAnalyzer(BaseAnalyzer):
         funds = portfolio_config.data_requirements.funds or []
         urls = [f["url"] for f in funds if isinstance(f, dict) and f.get("url")]
 
+        # Get scraping strategy from config (like holdings analyzer does)
+        strategy_str = portfolio_config.data_requirements.scraping_strategy
+        strategy = ScrapingStrategy(strategy_str)
+
         return DataRequirement(
-            strategy=ScrapingStrategy.API_SCRAPING,
+            strategy=strategy,
             urls=urls,
             metadata={
                 "analysis_id": "portfolio",

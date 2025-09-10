@@ -27,12 +27,14 @@ class ScrapingConfig(BaseModel):
     timeout_seconds: int
     delay_between_requests: float
     save_extracted_json: bool
+    default_scraper: str = "api"  # Default scraper type: "api" or "playwright"
 
 
 class DataRequirementsConfig(BaseModel):
     """Data requirements for an analysis."""
 
     scraping_strategy: str
+    scraper_type: str = "api"  # Explicit scraper type: "api" or "playwright"
     categories: dict[str, list[str]] | None = None
     funds: list[dict[str, Any]] | None = None
 

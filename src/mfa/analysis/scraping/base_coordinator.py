@@ -1,8 +1,8 @@
 """
-Base scraping coordinator with direct config access.
+Base scraping coordinator with configurable scraper types.
 
 This module provides shared scraping functionality that can be reused
-across different scraping strategies with simplified interfaces.
+across different scraping strategies with any scraper type (API or Playwright).
 """
 
 from __future__ import annotations
@@ -12,13 +12,12 @@ from typing import Any
 
 from mfa.config.settings import ConfigProvider
 from mfa.logging.logger import logger
-from mfa.scraping.core.playwright_scraper import PlaywrightSession
-from mfa.scraping.zerodha_coin import ZerodhaCoinScraper
+from mfa.scraping.scraper_factory import IScraper, ScraperFactory
 from mfa.storage.path_generator import PathGenerator
 
 
 class BaseScrapingCoordinator:
-    """Base class for scraping coordinators with dependency injection."""
+    """Base class for scraping coordinators with configurable scraper types."""
 
     def __init__(self, config_provider: ConfigProvider):
         """
@@ -29,25 +28,28 @@ class BaseScrapingCoordinator:
         """
         self.config_provider = config_provider
         self.path_generator = PathGenerator(config_provider)
-        self._scraper: ZerodhaCoinScraper | None = None
-        self._session: PlaywrightSession | None = None
+        self._scraper: IScraper | None = None
 
-    def _get_session(self) -> PlaywrightSession:
-        """Get or create a reusable Playwright session."""
-        if self._session is None:
-            settings = self._get_scraping_settings()
-            self._session = PlaywrightSession(
-                headless=settings["headless"], nav_timeout_ms=settings["timeout_seconds"] * 1000
-            )
-            self._session.open()
-        return self._session
+    def _get_scraper(self, scraper_type: str | None = None) -> IScraper:
+        """
+        Get scraper instance based on type.
 
-    def _get_scraper(self) -> ZerodhaCoinScraper:
-        """Get or create a scraper instance with shared session."""
+        Args:
+            scraper_type: Type of scraper to create ("api" or "playwright").
+                         If None, uses default from config.
+
+        Returns:
+            Scraper instance implementing IScraper interface
+        """
         if self._scraper is None:
-            # Pass the shared session to the scraper
-            session = self._get_session()
-            self._scraper = ZerodhaCoinScraper(session=session)
+            # Determine scraper type
+            if scraper_type is None:
+                config = self.config_provider.get_config()
+                scraper_type = getattr(config.scraping, "default_scraper", "api")
+
+            logger.debug(f"🔧 Creating {scraper_type} scraper")
+            self._scraper = ScraperFactory.create_scraper(scraper_type, self.config_provider)
+
         return self._scraper
 
     def _get_scraping_settings(self) -> dict[str, Any]:
@@ -65,21 +67,30 @@ class BaseScrapingCoordinator:
         self,
         urls: list[str],
         max_holdings: int,
-        category: str,
+        scraper_type: str,
         storage_config: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Scrape a list of URLs with proper delays between requests.
 
-        Simplified interface - storage_config contains all needed info.
+        Args:
+            urls: List of URLs to scrape
+            max_holdings: Maximum holdings per fund
+            scraper_type: Type of scraper to use ("api" or "playwright")
+            storage_config: Optional storage configuration
+
+        Returns:
+            List of scraped fund data
         """
-        scraper = self._get_scraper()
+        scraper = self._get_scraper(scraper_type)
         results = []
-        settings = self._get_scraping_settings()
+
+        config = self.config_provider.get_config()
+        delay_seconds = config.scraping.delay_between_requests
 
         for i, url in enumerate(urls):
             try:
-                logger.info(f"Scraping {i + 1}/{len(urls)}: {url}")
+                logger.info(f"Scraping {i + 1}/{len(urls)} with {scraper_type}: {url}")
 
                 result = scraper.scrape(
                     url=url, max_holdings=max_holdings, storage_config=storage_config
@@ -87,9 +98,9 @@ class BaseScrapingCoordinator:
                 results.append(result)
 
                 # Add delay between requests (except for the last one)
-                if i < len(urls) - 1 and settings["delay_seconds"] > 0:
-                    logger.debug(f"Waiting {settings['delay_seconds']}s before next request...")
-                    time.sleep(settings["delay_seconds"])
+                if i < len(urls) - 1 and delay_seconds > 0:
+                    logger.debug(f"Waiting {delay_seconds}s before next request...")
+                    time.sleep(delay_seconds)
 
             except Exception as e:
                 logger.error(f"Failed to scrape {url}: {e}")
@@ -107,12 +118,11 @@ class BaseScrapingCoordinator:
         logger.info(f"✅ {strategy} scraping completed: {successful}/{total} URLs successful")
 
     def close_session(self) -> None:
-        """Close the Playwright session and clean up resources."""
-        if self._session is not None:
-            logger.debug("🔒 Closing Playwright session")
-            self._session.close()
-            self._session = None
-        self._scraper = None
+        """Close scraper and clean up resources."""
+        if self._scraper is not None:
+            logger.debug("🔒 Closing scraper session")
+            self._scraper.close()
+            self._scraper = None
 
     def __enter__(self) -> BaseScrapingCoordinator:
         """Context manager entry."""

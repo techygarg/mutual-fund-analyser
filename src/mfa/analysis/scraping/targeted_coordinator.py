@@ -34,7 +34,7 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         Scrape specific fund URLs and save to files.
 
         Returns file paths for analysis instead of in-memory data.
-        Uses shared Playwright session for efficiency.
+        Uses configurable scraper type (API or Playwright).
         """
         urls = requirement.urls
         analysis_id = requirement.metadata.get("analysis_id", "default")
@@ -48,14 +48,17 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         max_holdings = analysis_config.params.max_holdings or 50
 
-        self._log_scraping_start("targeted", len(urls))
+        # Get scraper type from analysis config
+        scraper_type = getattr(analysis_config.data_requirements, "scraper_type", "api")
+
+        self._log_scraping_start(f"targeted ({scraper_type})", len(urls))
 
         try:
             # Build storage config
             storage_config = self._build_storage_config_for_targeted(analysis_config, analysis_id)
 
-            # Scrape and save to files using shared session
-            results = self._scrape_urls_with_delay(urls, max_holdings, "targeted", storage_config)
+            # Scrape and save to files using configured scraper type
+            results = self._scrape_urls_with_delay(urls, max_holdings, scraper_type, storage_config)
 
             # Generate file paths that were created
             file_paths = self._generate_expected_file_paths(urls, storage_config)
@@ -89,7 +92,7 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             # so keep category empty to make path: {output_dir}/{date}/{analysis_type}
             "category": "",
             "filename_prefix": "coin_",
-            "analysis_type": analysis_type_value,
+            "type": analysis_type_value,  # PathGenerator expects "type"
         }
 
         return storage_config
@@ -105,7 +108,7 @@ class TargetedScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         # Create analysis config for path generation
         analysis_config = {
-            "type": storage_config.get("analysis_type", "default"),
+            "type": storage_config.get("type", "default"),
             "path_template": storage_config.get("path_template"),
         }
 
