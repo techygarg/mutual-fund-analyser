@@ -124,3 +124,123 @@ class OutputBuilderUtils:
             return items
 
         return items[:max_items]
+
+    @staticmethod
+    def extract_max_companies_config(holdings_config: Any, default: int = 100) -> int:
+        """
+        Extract and validate max companies configuration.
+
+        Args:
+            holdings_config: Holdings configuration object
+            default: Default value if config is invalid
+
+        Returns:
+            Validated max companies value
+        """
+        max_companies_config = holdings_config.params.max_companies_in_results
+        max_companies = max_companies_config if isinstance(max_companies_config, int) else default
+
+        # Ensure non-negative
+        if isinstance(max_companies, int) and max_companies < 0:
+            max_companies = 0
+
+        return max_companies
+
+    @staticmethod
+    def format_company_for_dashboard(
+        company_name: str,
+        fund_count: int,
+        total_weight: float,
+        average_weight: float,
+        sample_funds: list[str],
+    ) -> dict[str, Any]:
+        """
+        Format company data for dashboard compatibility.
+
+        Args:
+            company_name: Name of the company
+            fund_count: Number of funds containing this company
+            total_weight: Total weight across all funds
+            average_weight: Average weight per fund
+            sample_funds: Sample fund names
+
+        Returns:
+            Dashboard-compatible company dictionary
+        """
+        return {
+            "name": company_name,
+            "company": company_name,  # Dashboard expects 'company' field
+            "fund_count": fund_count,
+            "total_weight": round(total_weight, 2),
+            "avg_weight": round(average_weight, 3),  # Note: avg_weight, not average_weight
+            "sample_funds": sample_funds,
+        }
+
+    @staticmethod
+    def format_fund_contribution(fund_name: str, contribution: float) -> dict[str, Any]:
+        """
+        Format fund contribution for output.
+
+        Args:
+            fund_name: Name of the fund
+            contribution: Contribution amount
+
+        Returns:
+            Formatted fund contribution dictionary
+        """
+        return {
+            "fund_name": fund_name,
+            "contribution": OutputBuilderUtils.format_currency_value(contribution),
+        }
+
+    @staticmethod
+    def sort_companies_by_criteria(companies: list[Any], sort_type: str) -> list[Any]:
+        """
+        Sort companies by different criteria.
+
+        Args:
+            companies: List of company objects with fund_count and total_weight
+            sort_type: "fund_count", "total_weight", or "weight_then_count"
+
+        Returns:
+            Sorted list of companies
+        """
+        if sort_type == "fund_count":
+            return sorted(companies, key=lambda c: (-c.fund_count, -c.total_weight))
+        elif sort_type == "total_weight":
+            return sorted(companies, key=lambda c: (-c.total_weight, -c.fund_count))
+        elif sort_type == "weight_then_count":
+            return sorted(companies, key=lambda c: -c.total_weight)
+        else:
+            raise ValueError(f"Unknown sort_type: {sort_type}")
+
+    @staticmethod
+    def extract_fund_references(aggregated_data: Any) -> list[dict[str, Any]]:
+        """
+        Extract fund references from aggregated data.
+
+        Args:
+            aggregated_data: Aggregated data with funds_info
+
+        Returns:
+            List of fund reference dictionaries
+        """
+        return [
+            {"name": fund_info["name"], "aum": fund_info["aum"]}
+            for fund_info in aggregated_data.funds_info.values()
+        ]
+
+    @staticmethod
+    def find_companies_in_all_funds(companies: list[Any], total_fund_count: int) -> list[Any]:
+        """
+        Find companies that appear in all funds.
+
+        Args:
+            companies: List of company objects with fund_count
+            total_fund_count: Total number of funds
+
+        Returns:
+            List of companies that appear in all funds, sorted by total_weight
+        """
+        companies_in_all = [c for c in companies if c.fund_count == total_fund_count]
+        return sorted(companies_in_all, key=lambda c: -c.total_weight)

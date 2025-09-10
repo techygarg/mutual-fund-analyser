@@ -98,54 +98,104 @@ class HoldingsAnalyzer(BaseAnalyzer):
         Returns:
             AnalysisResult with analysis outputs and summary
         """
-        # Validate input data source
+        # Initialize analysis
         self._validate_data_source(data_source)
-
         logger.info("🔍 Starting holdings analysis (file-based)")
 
-        # Load files using utility
+        # Load and validate data
+        loaded_data = self._load_and_validate_data(data_source)
+
+        # Process each category
+        output_paths, summary = self._process_all_categories(loaded_data, date)
+
+        # Complete analysis
+        self._log_completion_summary(summary)
+        return self._create_result(output_paths, summary, date)
+
+    def _load_and_validate_data(
+        self, data_source: dict[str, Any]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Load and validate data from source."""
         loaded_data = AnalyzerUtils.load_files_from_data_source(data_source)
         AnalyzerUtils.validate_loaded_data(loaded_data, "holdings")
+        return loaded_data
 
+    def _process_all_categories(
+        self, loaded_data: dict[str, list[dict[str, Any]]], date: str
+    ) -> tuple[list[Path], dict[str, Any]]:
+        """Process all categories and return output paths and summary."""
         output_paths = []
-        summary = {
+        summary = self._initialize_summary(loaded_data)
+
+        for category, fund_data_list in loaded_data.items():
+            if self._should_skip_category(category, fund_data_list):
+                continue
+
+            # Process single category
+            category_results = self._process_single_category(category, fund_data_list, date)
+
+            # Update tracking
+            output_paths.append(category_results["output_path"])
+            self._update_summary(summary, category_results)
+
+            self._log_category_completion(category, category_results)
+
+        return output_paths, summary
+
+    def _initialize_summary(self, loaded_data: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+        """Initialize analysis summary structure."""
+        return {
             "total_categories": len(loaded_data),
             "categories_processed": 0,
             "total_funds": 0,
             "total_companies": 0,
         }
 
-        for category, fund_data_list in loaded_data.items():
-            logger.info(f"📊 Analyzing category: {category}")
+    def _should_skip_category(self, category: str, fund_data_list: list[dict[str, Any]]) -> bool:
+        """Check if category should be skipped due to no data."""
+        if not fund_data_list:
+            logger.warning(f"No valid data files found for category {category}")
+            return True
+        return False
 
-            if not fund_data_list:
-                logger.warning(f"No valid data files found for category {category}")
-                continue
+    def _process_single_category(
+        self, category: str, fund_data_list: list[dict[str, Any]], date: str
+    ) -> dict[str, Any]:
+        """Process a single category and return results."""
+        logger.info(f"📊 Analyzing category: {category}")
 
-            # Process using components with dependency injection (no params needed)
-            processed_funds = self.data_processor.process_fund_jsons(fund_data_list)
-            aggregated_data = self.aggregator.aggregate_holdings(processed_funds)
-            category_output = self.output_builder.build_category_output(category, aggregated_data)
+        # Process using components with dependency injection
+        processed_funds = self.data_processor.process_fund_jsons(fund_data_list)
+        aggregated_data = self.aggregator.aggregate_holdings(processed_funds)
+        category_output = self.output_builder.build_category_output(category, aggregated_data)
 
-            # Save analysis result
-            output_path = self._save_category_result(category, category_output, date)
-            output_paths.append(output_path)
+        # Save analysis result
+        output_path = self._save_category_result(category, category_output, date)
 
-            # Update summary
-            summary["categories_processed"] += 1
-            summary["total_funds"] += len(processed_funds)
-            summary["total_companies"] += category_output.get("unique_companies", 0)
+        return {
+            "output_path": output_path,
+            "processed_funds": processed_funds,
+            "category_output": category_output,
+        }
 
-            logger.info(
-                f"   ✅ {category}: {len(processed_funds)} funds, {category_output.get('unique_companies', 0)} companies"
-            )
+    def _update_summary(self, summary: dict[str, Any], category_results: dict[str, Any]) -> None:
+        """Update summary with category results."""
+        summary["categories_processed"] += 1
+        summary["total_funds"] += len(category_results["processed_funds"])
+        summary["total_companies"] += category_results["category_output"].get("unique_companies", 0)
 
+    def _log_category_completion(self, category: str, category_results: dict[str, Any]) -> None:
+        """Log completion of category processing."""
+        fund_count = len(category_results["processed_funds"])
+        company_count = category_results["category_output"].get("unique_companies", 0)
+        logger.info(f"   ✅ {category}: {fund_count} funds, {company_count} companies")
+
+    def _log_completion_summary(self, summary: dict[str, Any]) -> None:
+        """Log final completion summary."""
         logger.info(
-            f"🎉 Holdings analysis completed: {summary['categories_processed']}/{summary['total_categories']} categories"
+            f"🎉 Holdings analysis completed: "
+            f"{summary['categories_processed']}/{summary['total_categories']} categories"
         )
-
-        # Use base class method for consistent result creation
-        return self._create_result(output_paths, summary, date)
 
     def _save_category_result(
         self, category: str, category_output: dict[str, Any], date: str
