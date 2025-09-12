@@ -74,7 +74,7 @@ class ZerodhaAPIFundScraper:
         return HTTPClient(
             timeout=self.DEFAULT_TIMEOUT,
             max_retries=self.DEFAULT_MAX_RETRIES,
-            backoff_factor=self.DEFAULT_BACKOFF_FACTOR
+            backoff_factor=self.DEFAULT_BACKOFF_FACTOR,
         )
 
     def scrape(
@@ -298,7 +298,9 @@ class ZerodhaAPIFundScraper:
             "risk_level": "",
         }
 
-    def _process_holdings_data(self, holdings_data: list[Any], max_holdings: int) -> list[dict[str, Any]]:
+    def _process_holdings_data(
+        self, holdings_data: list[Any], max_holdings: int
+    ) -> list[dict[str, Any]]:
         """
         Process raw holdings data into standardized format.
 
