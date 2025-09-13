@@ -4,7 +4,6 @@ paths:
 
 # Global scraping settings (shared across all analyses)
 scraping:
-  headless: false              # Set to true to hide browser window
   timeout_seconds: 30          # How long to wait for pages to load
   delay_between_requests: .1  # Seconds to wait between scraping each fund
   save_extracted_json: true    # Save intermediate scraped JSON files to disk
