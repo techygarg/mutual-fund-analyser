@@ -35,7 +35,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         Scrape funds organized by categories and save to files.
 
         Returns file paths for analysis instead of in-memory data.
-        Uses shared Playwright session for efficiency.
+        Uses configurable scraper type (API or Playwright).
         """
         categories = requirement.metadata["categories"]
         analysis_id = requirement.metadata.get("analysis_id", "default")
@@ -49,9 +49,13 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         max_holdings = analysis_config.params.max_holdings or 10
 
+        # Get scraper type from analysis config
+        scraper_type = getattr(analysis_config.data_requirements, "scraper_type", "api")
+        logger.info(f"🔧 Using {scraper_type} scraper for category-based scraping")
+
         # Calculate total URLs for logging
         total_urls = sum(len(urls) for urls in categories.values())
-        self._log_scraping_start("category-based", total_urls)
+        self._log_scraping_start(f"category-based ({scraper_type})", total_urls)
 
         scraped_data: dict[str, Any] = {
             "strategy": "categories",
@@ -66,9 +70,9 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             for category, urls in categories.items():
                 logger.info(f"📂 Scraping category: {category} ({len(urls)} funds)")
 
-                # Scrape and save to files using shared session
+                # Scrape and save to files using configured scraper type
                 category_results, file_paths = self._scrape_and_save_category(
-                    urls, category, max_holdings, analysis_config, analysis_id
+                    urls, category, max_holdings, scraper_type, analysis_config, analysis_id
                 )
 
                 # Store both in-memory data (for compatibility) and file paths
@@ -93,11 +97,20 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
         urls: list[str],
         category: str,
         max_holdings: int,
+        scraper_type: str,
         analysis_config: Any,
         analysis_id: str,
     ) -> tuple[list[dict[str, Any]], list[str]]:
         """
         Scrape URLs for a category and save to files.
+
+        Args:
+            urls: URLs to scrape
+            category: Category name
+            max_holdings: Maximum holdings per fund
+            scraper_type: Type of scraper to use
+            analysis_config: Analysis configuration
+            analysis_id: Analysis identifier
 
         Returns:
             tuple: (scraped_data_list, file_paths_list)
@@ -107,9 +120,9 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             category, analysis_config, analysis_id
         )
 
-        # Scrape with file saving enabled
+        # Scrape with file saving enabled using specified scraper type
         category_results = self._scrape_urls_with_delay(
-            urls, max_holdings, category, storage_config
+            urls, max_holdings, scraper_type, storage_config
         )
 
         # Generate file paths that were created
@@ -128,7 +141,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
             "base_dir": config.paths.output_dir,
             "category": category,
             "filename_prefix": "coin_",
-            "analysis_type": analysis_id,  # Use analysis_id directly
+            "type": analysis_id,  # PathGenerator expects "type", not "analysis_type"
         }
 
         # Add custom path template if specified
@@ -148,7 +161,7 @@ class CategoryScrapingCoordinator(BaseScrapingCoordinator, IScrapingCoordinator)
 
         # Create analysis config for path generation
         analysis_config = {
-            "type": storage_config.get("analysis_type", "default"),
+            "type": storage_config.get("type", "default"),
             "path_template": storage_config.get("path_template"),
         }
 

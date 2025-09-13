@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
-from mfa.core.exceptions import ConfigurationError
 
+from ..utils.aggregator_utils import AggregatorUtils
+from ..utils.output_builder_utils import OutputBuilderUtils
 from .data_processor import ProcessedFund
 
 
@@ -59,14 +60,11 @@ class HoldingsAggregator:
         Returns:
             AggregatedData with company information
         """
-        # Read configuration directly
-        config = self.config_provider.get_config()
-        holdings_config = config.get_analysis("holdings")
-        if holdings_config is None:
-            raise ConfigurationError(
-                "Holdings analysis configuration not found",
-                {"analysis": "holdings"},
-            )
+        # Read configuration using utility
+        holdings_config = OutputBuilderUtils.get_analysis_config_with_validation(
+            self.config_provider, "holdings"
+        )
+
         max_samples_config = holdings_config.params.max_sample_funds_per_company
         max_samples = max_samples_config if isinstance(max_samples_config, int) else 5
         if isinstance(max_samples, int) and max_samples < 0:
@@ -89,30 +87,36 @@ class HoldingsAggregator:
             # Process holdings in this fund
             for holding in fund.holdings:
                 company_name = holding.company_name
+                weight = holding.allocation_percentage
 
-                # Track which funds hold this company
+                # Track fund associations
                 company_to_funds[company_name].add(fund_key)
+                company_total_weights[company_name] += weight
 
-                # Sum up total weights across all funds
-                company_total_weights[company_name] += holding.allocation_percentage
-
-                # Collect sample fund names (limited)
+                # Limit sample funds using utility
                 if len(company_examples[company_name]) < max_samples:
                     company_examples[company_name].append(fund_key)
 
-        # Build final company data
+        # Build company data
         companies = {}
         for company_name in company_to_funds:
             fund_count = len(company_to_funds[company_name])
             total_weight = company_total_weights[company_name]
-            average_weight = total_weight / fund_count if fund_count > 0 else 0
+
+            # Calculate average weight using utility
+            average_weight = AggregatorUtils.calculate_average_weight(total_weight, fund_count)
+
+            # Limit sample funds using utility
+            sample_funds = AggregatorUtils.limit_sample_funds(
+                company_examples[company_name], max_samples
+            )
 
             companies[company_name] = CompanyData(
                 name=company_name,
                 fund_count=fund_count,
                 total_weight=total_weight,
                 average_weight=average_weight,
-                sample_funds=company_examples[company_name],
+                sample_funds=sample_funds,
             )
 
         return AggregatedData(companies=companies, funds_info=funds_info)

@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Any
 
 from mfa.config.settings import ConfigProvider
-from mfa.core.exceptions import ConfigurationError
 
+from ..utils.output_builder_utils import OutputBuilderUtils
 from .aggregator import AggregatedData, CompanyData
 
 
@@ -41,71 +41,88 @@ class HoldingsOutputBuilder:
         Returns:
             Complete analysis output dictionary in the expected format
         """
-        # Read configuration directly
-        config = self.config_provider.get_config()
-        holdings_config = config.get_analysis("holdings")
-        if holdings_config is None:
-            raise ConfigurationError(
-                "Holdings analysis configuration not found",
-                {"analysis": "holdings"},
-            )
-        max_companies_config = holdings_config.params.max_companies_in_results
-        max_companies = max_companies_config if isinstance(max_companies_config, int) else 100
-        if isinstance(max_companies, int) and max_companies < 0:
-            max_companies = 0
+        # Get configuration and limits
+        max_companies = self._get_max_companies_config()
 
-        # Build fund references from aggregated data
-        funds = [
-            {"name": fund_info["name"], "aum": fund_info["aum"]}
-            for fund_info in aggregated_data.funds_info.values()
-        ]
+        # Extract fund references
+        funds = self._extract_fund_references(aggregated_data)
 
-        # Convert company data to the expected format (dashboard compatible)
-        def format_company(company_data: CompanyData) -> dict[str, Any]:
-            return {
-                "name": company_data.name,
-                "company": company_data.name,  # Dashboard expects 'company' field
-                "fund_count": company_data.fund_count,
-                "total_weight": round(company_data.total_weight, 2),
-                "avg_weight": round(
-                    company_data.average_weight, 3
-                ),  # Note: avg_weight, not average_weight
-                "sample_funds": company_data.sample_funds,
-            }
+        # Sort companies by different criteria
+        sorted_companies = self._sort_companies_by_criteria(aggregated_data, funds)
 
-        # Sort companies by fund count (descending), then by total weight (descending)
-        companies_by_fund_count = sorted(
-            aggregated_data.companies.values(), key=lambda c: (-c.fund_count, -c.total_weight)
+        # Apply result limits
+        limited_companies = self._apply_result_limits(sorted_companies, max_companies)
+
+        # Build final output structure
+        return self._build_output_structure(funds, aggregated_data, limited_companies)
+
+    def _get_max_companies_config(self) -> int:
+        """Get and validate max companies configuration."""
+        holdings_config = OutputBuilderUtils.get_analysis_config_with_validation(
+            self.config_provider, "holdings"
         )
+        return OutputBuilderUtils.extract_max_companies_config(holdings_config)
 
-        # Sort companies by total weight (descending), then by fund count (descending)
-        companies_by_total_weight = sorted(
-            aggregated_data.companies.values(), key=lambda c: (-c.total_weight, -c.fund_count)
-        )
+    def _extract_fund_references(self, aggregated_data: AggregatedData) -> list[dict[str, Any]]:
+        """Extract fund references from aggregated data."""
+        return OutputBuilderUtils.extract_fund_references(aggregated_data)
 
-        # Find companies that appear in ALL funds
-        total_funds = len(funds)
-        companies_in_all_funds = [
-            company
-            for company in aggregated_data.companies.values()
-            if company.fund_count == total_funds
-        ]
-        # Sort common companies by total weight (descending)
-        companies_in_all_funds.sort(key=lambda c: -c.total_weight)
+    def _sort_companies_by_criteria(
+        self, aggregated_data: AggregatedData, funds: list[dict[str, Any]]
+    ) -> dict[str, list]:
+        """Sort companies by different criteria for various output sections."""
+        company_values = list(aggregated_data.companies.values())
 
-        # Apply max_companies limit to each category
-        if max_companies > 0:
-            companies_by_fund_count = companies_by_fund_count[:max_companies]
-            companies_by_total_weight = companies_by_total_weight[:max_companies]
-            companies_in_all_funds = companies_in_all_funds[:max_companies]
+        return {
+            "by_fund_count": OutputBuilderUtils.sort_companies_by_criteria(
+                company_values, "fund_count"
+            ),
+            "by_total_weight": OutputBuilderUtils.sort_companies_by_criteria(
+                company_values, "total_weight"
+            ),
+            "common_in_all": OutputBuilderUtils.find_companies_in_all_funds(
+                company_values, len(funds)
+            ),
+        }
 
-        # Build the output structure matching the previous format
+    def _apply_result_limits(
+        self, sorted_companies: dict[str, list], max_companies: int
+    ) -> dict[str, list]:
+        """Apply max companies limit to each category."""
+        return {
+            key: OutputBuilderUtils.limit_results(companies, max_companies)
+            for key, companies in sorted_companies.items()
+        }
+
+    def _build_output_structure(
+        self,
+        funds: list[dict[str, Any]],
+        aggregated_data: AggregatedData,
+        limited_companies: dict[str, list],
+    ) -> dict[str, Any]:
+        """Build the final output structure matching dashboard format."""
         return {
             "total_files": len(funds),  # Dashboard expects this field
             "total_funds": len(funds),
             "funds": funds,
             "unique_companies": len(aggregated_data.companies),
-            "top_by_fund_count": [format_company(c) for c in companies_by_fund_count],
-            "top_by_total_weight": [format_company(c) for c in companies_by_total_weight],
-            "common_in_all_funds": [format_company(c) for c in companies_in_all_funds],
+            "top_by_fund_count": [
+                self._format_company_for_output(c) for c in limited_companies["by_fund_count"]
+            ],
+            "top_by_total_weight": [
+                self._format_company_for_output(c) for c in limited_companies["by_total_weight"]
+            ],
+            "common_in_all_funds": [
+                self._format_company_for_output(c) for c in limited_companies["common_in_all"]
+            ],
         }
+
+    def _format_company_for_output(self, company_data: CompanyData) -> dict[str, Any]:
+        """Format company data for dashboard compatibility."""
+        return OutputBuilderUtils.format_company_for_dashboard(
+            company_data.name,
+            company_data.fund_count,
+            company_data.total_weight,
+            company_data.average_weight,
+            company_data.sample_funds,
+        )

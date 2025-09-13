@@ -18,7 +18,8 @@ analyses:
   holdings:
     enabled: true
     data_requirements:
-      scraping_strategy:  api_scraping
+      scraping_strategy: categories    # Strategy: how data is organized
+      scraper_type: api 
       categories:
         largeCap:
           - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -36,7 +37,8 @@ analyses:
   portfolio:          # Key IS the analyzer type (matches @register_analyzer)
     enabled: true
     data_requirements:
-      scraping_strategy: targeted_funds
+      scraping_strategy: targeted_funds   # Strategy: how data is organized
+      scraper_type: api
       funds:
         - units: 1000
           url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth

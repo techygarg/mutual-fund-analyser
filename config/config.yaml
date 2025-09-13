@@ -4,17 +4,19 @@ paths:
 
 # Global scraping settings (shared across all analyses)
 scraping:
-  headless: false              # Set to true to hide browser window
+  headless: true
   timeout_seconds: 30          # How long to wait for pages to load
-  delay_between_requests: 1.0  # Seconds to wait between scraping each fund
+  delay_between_requests: .1  # Seconds to wait between scraping each fund
   save_extracted_json: true    # Save intermediate scraped JSON files to disk
+  default_scraper: api         # Default scraper type: "api" or "playwright"
 
 # Analysis definitions - each analysis defines its own data requirements
 analyses:
   holdings:                    # Key IS the analyzer type (removed redundant type field)
     enabled: true
     data_requirements:
-      scraping_strategy: api_scraping  # Will align scraping strategies later
+      scraping_strategy: categories    # Strategy: how data is organized
+      scraper_type: api               # Scraper: what technology to use
       categories:
           largeCap:
             - https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
@@ -56,7 +58,8 @@ analyses:
   portfolio:          # Key IS the analyzer type (matches @register_analyzer)
     enabled: true
     data_requirements:
-      scraping_strategy: targeted_funds
+      scraping_strategy: targeted_funds   # Strategy: how data is organized
+      scraper_type: api                  # Scraper: what technology to use
       funds:
         - units: 1000
           url: https://coin.zerodha.com/mf/fund/INF204K01XI3/nippon-india-large-cap-fund-direct-growth
